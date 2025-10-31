@@ -1,0 +1,3641 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RESCUE-1 料金シミュレーター</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary-color: #D32F2F;
+            --light-primary-color: #FFEBEE;
+            --text-color: #222;
+            --border-color: #ddd;
+            --bg-color: #f7f7fb;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: var(--bg-color);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .chat-container {
+            width: 100%;
+            max-width: 500px;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            height: 90vh;
+            max-height: 700px;
+        }
+
+        .chat-header {
+            background: linear-gradient(90deg, #D32F2F, #b71c1c);
+            color: white;
+            padding: 20px;
+            text-align: center;
+            border-bottom: 4px solid #B71C1C;
+        }
+
+        .chat-header h1 {
+            font-size: 20px;
+            margin-bottom: 5px;
+            letter-spacing: 0.02em;
+        }
+
+        .chat-header p {
+            font-size: 12px;
+            opacity: 0.9;
+        }
+
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            background: #f5f5f5;
+            padding-bottom: 200px;
+        }
+
+        .message {
+            margin-bottom: 15px;
+            display: flex;
+            animation: fadeIn 0.3s ease-in;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .message.bot {
+            justify-content: flex-start;
+        }
+
+        .message.user {
+            justify-content: flex-end;
+        }
+
+        .message-content {
+            max-width: 80%;
+            padding: 12px 16px;
+            border-radius: 18px;
+            line-height: 1.5;
+        }
+
+        .message.bot .message-content {
+            background: white;
+            border: 1px solid #e0e0e0;
+            color: var(--text-color);
+        }
+
+        .message.user .message-content {
+            background: var(--primary-color);
+            color: white;
+        }
+
+        .quick-replies {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .quick-reply-btn, .option-btn {
+            background: white;
+            border: 2px solid var(--primary-color);
+            color: var(--primary-color);
+            padding: 10px 20px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+
+        .quick-reply-btn:hover, .option-btn:hover {
+            background: var(--primary-color);
+            color: white;
+        }
+
+        .select-input, input[type="number"], input[type="range"] {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 14px;
+            margin-top: 10px;
+        }
+
+        .select-input:focus, input:focus {
+            outline: none;
+            border-color: var(--primary-color);
+        }
+
+        .button-group {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .result-panel {
+            position: fixed;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 100%;
+            max-width: 500px;
+            background: white;
+            border-top: 3px solid var(--primary-color);
+            box-shadow: 0 -5px 20px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            z-index: 1000;
+        }
+
+        .result-total {
+            font-size: 28px;
+            font-weight: bold;
+            color: var(--primary-color);
+            text-align: center;
+            margin-bottom: 15px;
+        }
+
+        .result-breakdown {
+            font-size: 11px;
+            color: #666;
+            margin-bottom: 15px;
+        }
+
+        .result-breakdown p {
+            display: flex;
+            justify-content: space-between;
+            margin: 5px 0;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 10px;
+        }
+
+        .action-btn {
+            flex: 1;
+            padding: 14px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-line {
+            background: #06C755;
+            color: white;
+        }
+
+        .btn-line:hover {
+            background: #05b34b;
+        }
+
+        .btn-call {
+            background: var(--primary-color);
+            color: white;
+        }
+
+        .btn-call:hover {
+            background: #b71c1c;
+        }
+
+        .distance-slider-container {
+            margin-top: 15px;
+        }
+
+        .distance-value {
+            font-size: 20px;
+            font-weight: bold;
+            color: var(--primary-color);
+            text-align: center;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="chat-container">
+        <div class="chat-header">
+            <h1>🏍️ RESCUE-1 料金シミュレーター</h1>
+            <p>バイクレッカー・出張修理の料金をお見積もり</p>
+        </div>
+        <div class="chat-messages" id="chatMessages"></div>
+        <div class="result-panel" id="resultPanel" style="display: none;">
+            <div class="result-total" id="resultTotal"></div>
+            <div class="result-breakdown" id="resultBreakdown"></div>
+        </div>
+    </div>
+
+    <script>
+        // ===== データ定義 =====
+// レッカー出張料データ
+const towingAreaFees = {
+  "東京都": {
+    "23区（都心・東部）": {
+      "千代田区": 7700,
+      "中央区": 6600,
+      "港区": 6600,
+      "新宿区": 7700,
+      "文京区": 7700,
+      "台東区": 7700,
+      "墨田区": 6600,
+      "江東区": 6600,
+      "荒川区": 6600,
+      "足立区": 6600,
+      "葛飾区": 6600,
+      "江戸川区": 6600
+    },
+    "23区（南部・西部）": {
+      "品川区": 6600,
+      "目黒区": 6600,
+      "大田区": 7700,
+      "世田谷区": 7700,
+      "渋谷区": 7700,
+      "中野区": 7700,
+      "杉並区": 7700,
+      "豊島区": 7700,
+      "北区": 7700,
+      "板橋区": 7700,
+      "練馬区": 7700
+    },
+    "多摩地区（東部）": {
+      "武蔵野市": 9800,
+      "三鷹市": 8800,
+      "調布市": 9800,
+      "小金井市": 9800,
+      "小平市": 11800,
+      "国分寺市": 11800,
+      "国立市": 11800,
+      "狛江市": 9800,
+      "東久留米市": 12800,
+      "西東京市": 11800,
+      "清瀬市": 11800
+    },
+    "多摩地区（中西部）": {
+      "立川市": 12800,
+      "府中市": 12800,
+      "昭島市": 12800,
+      "町田市": 12800,
+      "日野市": 12800,
+      "東村山市": 12800,
+      "東大和市": 12800,
+      "武蔵村山市": 12800,
+      "多摩市": 12800,
+      "稲城市": 12800
+    },
+    "多摩地区（奥多摩）": {
+      "八王子市": 13800,
+      "青梅市": 13800,
+      "福生市": 13800,
+      "羽村市": 13800,
+      "あきる野市": 13800
+    }
+  },
+  "埼玉県": {
+    "さいたま市": {
+      "さいたま市西区": 6600,
+      "さいたま市北区": 6600,
+      "さいたま市大宮区": 9800,
+      "さいたま市見沼区": 9800,
+      "さいたま市中央区": 8800,
+      "さいたま市桜区": 8800,
+      "さいたま市浦和区": 8800,
+      "さいたま市南区": 8800,
+      "さいたま市緑区": 8800,
+      "さいたま市岩槻区": 8800
+    },
+    "南東部エリア": {
+      "川口市": 7700,
+      "草加市": 6600,
+      "越谷市": 6600,
+      "蕨市": 8800,
+      "戸田市": 7700,
+      "八潮市": 6600,
+      "三郷市": 6600,
+      "吉川市": 12800
+    },
+    "南西部エリア": {
+      "所沢市": 12800,
+      "飯能市": 12800,
+      "狭山市": 12800,
+      "入間市": 12800,
+      "朝霞市": 12800,
+      "志木市": 12800,
+      "和光市": 12800,
+      "新座市": 12800,
+      "富士見市": 12800,
+      "ふじみ野市": 12800,
+      "日高市": 12800
+    },
+    "中央エリア": {
+      "上尾市": 12800,
+      "桶川市": 12800,
+      "久喜市": 12800,
+      "北本市": 12800,
+      "蓮田市": 12800,
+      "白岡市": 12800
+    },
+    "西部エリア": {
+      "川越市": 12800,
+      "東松山市": 12800,
+      "坂戸市": 12800,
+      "鶴ヶ島市": 12800
+    },
+    "北部・秩父エリア": {
+      "熊谷市": 18800,
+      "行田市": 18800,
+      "秩父市": 18800,
+      "加須市": 18800,
+      "本庄市": 18800,
+      "羽生市": 18800,
+      "鴻巣市": 18800,
+      "深谷市": 18800,
+      "幸手市": 18800
+    }
+  },
+  "千葉県": {
+    "千葉市": {
+      "千葉市中央区": 7700,
+      "千葉市花見川区": 7700,
+      "千葉市稲毛区": 7700,
+      "千葉市若葉区": 7700,
+      "千葉市緑区": 7700,
+      "千葉市美浜区": 7700
+    },
+    "ベイ・東葛エリア": {
+      "市川市": 6600,
+      "船橋市": 6600,
+      "松戸市": 6600,
+      "野田市": 7700,
+      "習志野市": 6600,
+      "柏市": 7700,
+      "流山市": 7700,
+      "八千代市": 8700,
+      "我孫子市": 8700,
+      "鎌ケ谷市": 7700,
+      "浦安市": 6600
+    },
+    "北総エリア": {
+      "成田市": 9800,
+      "佐倉市": 9800,
+      "八街市": 9800,
+      "印西市": 9800,
+      "白井市": 10800,
+      "富里市": 11800,
+      "四街道市": 9800
+    },
+    "房総エリア": {
+      "木更津市": 12800,
+      "市原市": 12800,
+      "君津市": 14800,
+      "富津市": 14800,
+      "袖ケ浦市": 14800,
+      "館山市": 14800,
+      "鴨川市": 14800,
+      "南房総市": 14800
+    },
+    "九十九里・東総エリア": {
+      "茂原市": 12800,
+      "東金市": 12800,
+      "旭市": 12800,
+      "匝瑳市": 12800,
+      "香取市": 12800,
+      "山武市": 12800,
+      "いすみ市": 12800,
+      "大網白里市": 12800,
+      "銚子市": 12800,
+      "勝浦市": 12800
+    }
+  },
+  "神奈川県": {
+    "横浜市": {
+      "横浜市鶴見区": 6600,
+      "横浜市神奈川区": 6600,
+      "横浜市西区": 6600,
+      "横浜市中区": 6600,
+      "横浜市南区": 6600,
+      "横浜市保土ケ谷区": 6600,
+      "横浜市磯子区": 6600,
+      "横浜市金沢区": 6600,
+      "横浜市港北区": 6600,
+      "横浜市戸塚区": 6600,
+      "横浜市港南区": 6600,
+      "横浜市旭区": 6600,
+      "横浜市緑区": 6600,
+      "横浜市瀬谷区": 6600,
+      "横浜市栄区": 6600,
+      "横浜市泉区": 6600,
+      "横浜市青葉区": 6600,
+      "横浜市都筑区": 6600
+    },
+    "川崎市": {
+      "川崎市川崎区": 6600,
+      "川崎市幸区": 6600,
+      "川崎市中原区": 6600,
+      "川崎市高津区": 6600,
+      "川崎市多摩区": 6600,
+      "川崎市宮前区": 6600,
+      "川崎市麻生区": 6600
+    },
+    "相模原市・県央エリア": {
+      "相模原市緑区": 7700,
+      "相模原市中央区": 7700,
+      "相模原市南区": 7700,
+      "厚木市": 7700,
+      "大和市": 7700,
+      "海老名市": 7700,
+      "座間市": 7700,
+      "綾瀬市": 7700
+    },
+    "湘南・横須賀三浦エリア": {
+      "横須賀市": 8800,
+      "平塚市": 8800,
+      "鎌倉市": 8800,
+      "藤沢市": 8800,
+      "茅ヶ崎市": 8800,
+      "逗子市": 9800,
+      "三浦市": 9800
+    },
+    "県西エリア": {
+      "小田原市": 11800,
+      "秦野市": 11800,
+      "伊勢原市": 11800,
+      "南足柄市": 11800
+    }
+  },
+  "大阪府": {
+    "大阪市": {
+      "大阪市北区": 3800,
+      "大阪市都島区": 3800,
+      "大阪市福島区": 3800,
+      "大阪市此花区": 3800,
+      "大阪市中央区": 3800,
+      "大阪市西区": 3800,
+      "大阪市港区": 3800,
+      "大阪市大正区": 3800,
+      "大阪市天王寺区": 3800,
+      "大阪市浪速区": 3800,
+      "大阪市西淀川区": 3800,
+      "大阪市淀川区": 3800,
+      "大阪市東淀川区": 3800,
+      "大阪市東成区": 3800,
+      "大阪市生野区": 3800,
+      "大阪市旭区": 3800,
+      "大阪市城東区": 3800,
+      "大阪市鶴見区": 3800,
+      "大阪市阿倍野区": 3800,
+      "大阪市住之江区": 3800,
+      "大阪市住吉区": 3800,
+      "大阪市東住吉区": 3800,
+      "大阪市平野区": 3800,
+      "大阪市西成区": 3800
+    },
+    "堺市": {
+      "堺市堺区": 3800,
+      "堺市中区": 3800,
+      "堺市東区": 3800,
+      "堺市西区": 3800,
+      "堺市南区": 3800,
+      "堺市北区": 3800,
+      "堺市美原区": 3800
+    },
+    "北摂エリア": {
+      "豊中市": 6600,
+      "池田市": 6600,
+      "吹田市": 6600,
+      "高槻市": 6600,
+      "茨木市": 6600,
+      "箕面市": 6600,
+      "摂津市": 6600
+    },
+    "河内エリア": {
+      "守口市": 6600,
+      "枚方市": 6600,
+      "八尾市": 6600,
+      "富田林市": 6600,
+      "寝屋川市": 6600,
+      "河内長野市": 8800,
+      "松原市": 6600,
+      "大東市": 6600,
+      "柏原市": 6600,
+      "羽曳野市": 6600,
+      "門真市": 6600,
+      "藤井寺市": 6600,
+      "東大阪市": 6600,
+      "四條畷市": 6600,
+      "交野市": 6600,
+      "大阪狭山市": 6600
+    },
+    "泉州エリア": {
+      "岸和田市": 6600,
+      "泉大津市": 6600,
+      "貝塚市": 6600,
+      "泉佐野市": 6600,
+      "和泉市": 6600,
+      "高石市": 6600,
+      "泉南市": 7700,
+      "阪南市": 7700
+    }
+  },
+  "京都府": {
+    "京都市": {
+      "京都市北区": 5800,
+      "京都市上京区": 5800,
+      "京都市左京区": 5800,
+      "京都市中京区": 5800,
+      "京都市東山区": 5800,
+      "京都市下京区": 5800,
+      "京都市南区": 5800,
+      "京都市右京区": 5800,
+      "京都市伏見区": 5800,
+      "京都市山科区": 5800,
+      "京都市西京区": 5800
+    },
+    "南部エリア": {
+      "宇治市": 5800,
+      "城陽市": 5800,
+      "向日市": 5800,
+      "長岡京市": 5800,
+      "八幡市": 5800,
+      "京田辺市": 5800,
+      "木津川市": 5800
+    },
+    "中部・北部エリア": {
+      "亀岡市": 14800,
+      "福知山市": 14800,
+      "舞鶴市": 14800,
+      "綾部市": 14800,
+      "宮津市": 14800,
+      "京丹後市": 14800,
+      "南丹市": 14800
+    }
+  },
+  "兵庫県": {
+    "神戸市": {
+      "神戸市東灘区": 4800,
+      "神戸市灘区": 4800,
+      "神戸市兵庫区": 4800,
+      "神戸市長田区": 4800,
+      "神戸市須磨区": 4800,
+      "神戸市垂水区": 4800,
+      "神戸市北区": 4800,
+      "神戸市中央区": 4800,
+      "神戸市西区": 4800
+    },
+    "阪神エリア": {
+      "尼崎市": 4800,
+      "西宮市": 4800,
+      "芦屋市": 4800,
+      "伊丹市": 4800,
+      "宝塚市": 4800,
+      "川西市": 4800,
+      "三田市": 4800
+    },
+    "播磨エリア": {
+      "姫路市": 6600,
+      "明石市": 4800,
+      "加古川市": 4800,
+      "赤穂市": 8800,
+      "西脇市": 6600,
+      "三木市": 4800,
+      "高砂市": 4800,
+      "小野市": 4800,
+      "加西市": 4800,
+      "加東市": 4800,
+      "たつの市": 6600
+    },
+    "但馬・丹波・淡路エリア": {
+      "洲本市": 8800,
+      "相生市": 10800,
+      "豊岡市": 14800,
+      "丹波篠山市": 9800,
+      "養父市": 16800,
+      "丹波市": 16800,
+      "南あわじ市": 10800,
+      "朝来市": 16800,
+      "淡路市": 10800,
+      "宍粟市": 16800
+    }
+  },
+  "奈良県": {
+    "北部エリア": {
+      "奈良市": 4800,
+      "大和高田市": 4800,
+      "大和郡山市": 4800,
+      "天理市": 4800,
+      "橿原市": 4800,
+      "桜井市": 4800,
+      "生駒市": 4800,
+      "香芝市": 4800,
+      "葛城市": 4800
+    },
+    "中南部エリア": {
+      "五條市": 4800,
+      "御所市": 4800,
+      "宇陀市": 8800,
+      "十津川村": 8800
+    }
+  },
+  "滋賀県": {
+    "湖南・湖東エリア": {
+      "大津市": 7700,
+      "彦根市": 7700,
+      "近江八幡市": 7700,
+      "草津市": 7700,
+      "守山市": 7700,
+      "栗東市": 7700,
+      "甲賀市": 7700,
+      "野洲市": 7700,
+      "湖南市": 7700,
+      "東近江市": 7700
+    },
+    "湖北・湖西エリア": {
+      "長浜市": 8800,
+      "高島市": 8800,
+      "米原市": 8800
+    }
+  },
+  "和歌山県": {
+    "紀北エリア": {
+      "和歌山市": 7700,
+      "海南市": 7700,
+      "橋本市": 7700,
+      "紀の川市": 7700,
+      "岩出市": 7700
+    },
+    "紀中・紀南エリア": {
+      "有田市": 9800,
+      "御坊市": 9800,
+      "田辺市": 9800,
+      "新宮市": 9800
+    }
+  }
+};
+
+// 出張修理出張料データ
+const repairAreaFees = {
+  "東京都": {
+    "23区（都心・東部）": {
+      "千代田区": 10780,
+      "中央区": 9240,
+      "港区": 9240,
+      "新宿区": 10780,
+      "文京区": 10780,
+      "台東区": 10780,
+      "墨田区": 9240,
+      "江東区": 9240,
+      "荒川区": 9240,
+      "足立区": 9240,
+      "葛飾区": 9240,
+      "江戸川区": 9240
+    },
+    "23区（南部・西部）": {
+      "品川区": 9240,
+      "目黒区": 9240,
+      "大田区": 10780,
+      "世田谷区": 10780,
+      "渋谷区": 10780,
+      "中野区": 10780,
+      "杉並区": 10780,
+      "豊島区": 10780,
+      "北区": 10780,
+      "板橋区": 10780,
+      "練馬区": 10780
+    },
+    "多摩地区（東部）": {
+      "武蔵野市": 13720,
+      "三鷹市": 12320,
+      "調布市": 13720,
+      "小金井市": 13720,
+      "小平市": 16520,
+      "国分寺市": 16520,
+      "国立市": 16520,
+      "狛江市": 13720,
+      "東久留米市": 17920,
+      "西東京市": 16520,
+      "清瀬市": 16520
+    },
+    "多摩地区（中西部）": {
+      "立川市": 17920,
+      "府中市": 17920,
+      "昭島市": 17920,
+      "町田市": 17920,
+      "日野市": 17920,
+      "東村山市": 17920,
+      "東大和市": 17920,
+      "武蔵村山市": 17920,
+      "多摩市": 17920,
+      "稲城市": 17920
+    },
+    "多摩地区（奥多摩）": {
+      "八王子市": 19320,
+      "青梅市": 19320,
+      "福生市": 19320,
+      "羽村市": 19320,
+      "あきる野市": 19320
+    }
+  },
+  "埼玉県": {
+    "さいたま市": {
+      "さいたま市西区": 9240,
+      "さいたま市北区": 9240,
+      "さいたま市大宮区": 13720,
+      "さいたま市見沼区": 13720,
+      "さいたま市中央区": 12320,
+      "さいたま市桜区": 12320,
+      "さいたま市浦和区": 12320,
+      "さいたま市南区": 12320,
+      "さいたま市緑区": 12320,
+      "さいたま市岩槻区": 12320
+    },
+    "南東部エリア": {
+      "川口市": 10780,
+      "草加市": 9240,
+      "越谷市": 9240,
+      "蕨市": 12320,
+      "戸田市": 10780,
+      "八潮市": 9240,
+      "三郷市": 9240,
+      "吉川市": 17920
+    },
+    "南西部エリア": {
+      "所沢市": 17920,
+      "飯能市": 17920,
+      "狭山市": 17920,
+      "入間市": 17920,
+      "朝霞市": 17920,
+      "志木市": 17920,
+      "和光市": 17920,
+      "新座市": 17920,
+      "富士見市": 17920,
+      "ふじみ野市": 17920,
+      "日高市": 17920
+    },
+    "中央エリア": {
+      "上尾市": 17920,
+      "桶川市": 17920,
+      "久喜市": 17920,
+      "北本市": 17920,
+      "蓮田市": 17920,
+      "白岡市": 17920
+    },
+    "西部エリア": {
+      "川越市": 17920,
+      "東松山市": 17920,
+      "坂戸市": 17920,
+      "鶴ヶ島市": 17920
+    },
+    "北部・秩父エリア": {
+      "熊谷市": 26320,
+      "行田市": 26320,
+      "秩父市": 26320,
+      "加須市": 26320,
+      "本庄市": 26320,
+      "羽生市": 26320,
+      "鴻巣市": 26320,
+      "深谷市": 26320,
+      "幸手市": 26320
+    }
+  },
+  "千葉県": {
+    "千葉市": {
+      "千葉市中央区": 10780,
+      "千葉市花見川区": 10780,
+      "千葉市稲毛区": 10780,
+      "千葉市若葉区": 10780,
+      "千葉市緑区": 10780,
+      "千葉市美浜区": 10780
+    },
+    "ベイ・東葛エリア": {
+      "市川市": 9240,
+      "船橋市": 9240,
+      "松戸市": 9240,
+      "野田市": 10780,
+      "習志野市": 9240,
+      "柏市": 10780,
+      "流山市": 10780,
+      "八千代市": 12180,
+      "我孫子市": 12180,
+      "鎌ケ谷市": 10780,
+      "浦安市": 9240
+    },
+    "北総エリア": {
+      "成田市": 13720,
+      "佐倉市": 13720,
+      "八街市": 13720,
+      "印西市": 13720,
+      "白井市": 15120,
+      "富里市": 16520,
+      "四街道市": 13720
+    },
+    "房総エリア": {
+      "木更津市": 17920,
+      "市原市": 17920,
+      "君津市": 20720,
+      "富津市": 20720,
+      "袖ケ浦市": 20720,
+      "館山市": 20720,
+      "鴨川市": 20720,
+      "南房総市": 20720
+    },
+    "九十九里・東総エリア": {
+      "茂原市": 17920,
+      "東金市": 17920,
+      "旭市": 17920,
+      "匝瑳市": 17920,
+      "香取市": 17920,
+      "山武市": 17920,
+      "いすみ市": 17920,
+      "大網白里市": 17920,
+      "銚子市": 17920,
+      "勝浦市": 17920
+    }
+  },
+  "神奈川県": {
+    "横浜市": {
+      "横浜市鶴見区": 9240,
+      "横浜市神奈川区": 9240,
+      "横浜市西区": 9240,
+      "横浜市中区": 9240,
+      "横浜市南区": 9240,
+      "横浜市保土ケ谷区": 9240,
+      "横浜市磯子区": 9240,
+      "横浜市金沢区": 9240,
+      "横浜市港北区": 9240,
+      "横浜市戸塚区": 9240,
+      "横浜市港南区": 9240,
+      "横浜市旭区": 9240,
+      "横浜市緑区": 9240,
+      "横浜市瀬谷区": 9240,
+      "横浜市栄区": 9240,
+      "横浜市泉区": 9240,
+      "横浜市青葉区": 9240,
+      "横浜市都筑区": 9240
+    },
+    "川崎市": {
+      "川崎市川崎区": 9240,
+      "川崎市幸区": 9240,
+      "川崎市中原区": 9240,
+      "川崎市高津区": 9240,
+      "川崎市多摩区": 12320,
+      "川崎市宮前区": 12320,
+      "川崎市麻生区": 12320
+    },
+    "相模原市・県央エリア": {
+      "相模原市緑区": 16520,
+      "相模原市中央区": 16520,
+      "相模原市南区": 16520,
+      "厚木市": 16520,
+      "大和市": 16520,
+      "海老名市": 16520,
+      "座間市": 16520,
+      "綾瀬市": 16520
+    },
+    "湘南・横須賀三浦エリア": {
+      "横須賀市": 12320,
+      "平塚市": 12320,
+      "鎌倉市": 12320,
+      "藤沢市": 12320,
+      "茅ヶ崎市": 12320,
+      "逗子市": 12320,
+      "三浦市": 20720
+    },
+    "県西エリア": {
+      "小田原市": 16520,
+      "秦野市": 16520,
+      "伊勢原市": 16520,
+      "南足柄市": 16520
+    }
+  },
+  "大阪府": {
+    "大阪市": {
+      "大阪市北区": 5320,
+      "大阪市都島区": 5320,
+      "大阪市福島区": 5320,
+      "大阪市此花区": 5320,
+      "大阪市中央区": 5320,
+      "大阪市西区": 5320,
+      "大阪市港区": 5320,
+      "大阪市大正区": 5320,
+      "大阪市天王寺区": 5320,
+      "大阪市浪速区": 5320,
+      "大阪市西淀川区": 5320,
+      "大阪市淀川区": 5320,
+      "大阪市東淀川区": 5320,
+      "大阪市東成区": 5320,
+      "大阪市生野区": 5320,
+      "大阪市旭区": 5320,
+      "大阪市城東区": 5320,
+      "大阪市鶴見区": 5320,
+      "大阪市阿倍野区": 5320,
+      "大阪市住之江区": 5320,
+      "大阪市住吉区": 5320,
+      "大阪市東住吉区": 5320,
+      "大阪市平野区": 5320,
+      "大阪市西成区": 5320
+    },
+    "堺市": {
+      "堺市堺区": 5320,
+      "堺市中区": 5320,
+      "堺市東区": 5320,
+      "堺市西区": 5320,
+      "堺市南区": 5320,
+      "堺市北区": 5320,
+      "堺市美原区": 5320
+    },
+    "北摂エリア": {
+      "豊中市": 9240,
+      "池田市": 9240,
+      "吹田市": 9240,
+      "高槻市": 9240,
+      "茨木市": 9240,
+      "箕面市": 9240,
+      "摂津市": 9240
+    },
+    "河内エリア": {
+      "守口市": 9240,
+      "枚方市": 9240,
+      "八尾市": 9240,
+      "富田林市": 9240,
+      "寝屋川市": 9240,
+      "河内長野市": 12320,
+      "松原市": 9240,
+      "大東市": 9240,
+      "柏原市": 9240,
+      "羽曳野市": 9240,
+      "門真市": 9240,
+      "藤井寺市": 9240,
+      "東大阪市": 9240,
+      "四條畷市": 9240,
+      "交野市": 9240,
+      "大阪狭山市": 9240
+    },
+    "泉州エリア": {
+      "岸和田市": 9240,
+      "泉大津市": 9240,
+      "貝塚市": 9240,
+      "泉佐野市": 9240,
+      "和泉市": 9240,
+      "高石市": 9240,
+      "泉南市": 10780,
+      "阪南市": 10780
+    }
+  },
+  "京都府": {
+    "京都市": {
+      "京都市北区": 8120,
+      "京都市上京区": 8120,
+      "京都市左京区": 8120,
+      "京都市中京区": 8120,
+      "京都市東山区": 8120,
+      "京都市下京区": 8120,
+      "京都市南区": 8120,
+      "京都市右京区": 8120,
+      "京都市伏見区": 8120,
+      "京都市山科区": 8120,
+      "京都市西京区": 8120
+    },
+    "南部エリア": {
+      "宇治市": 8120,
+      "城陽市": 8120,
+      "向日市": 8120,
+      "長岡京市": 8120,
+      "八幡市": 8120,
+      "京田辺市": 8120,
+      "木津川市": 8120
+    },
+    "中部・北部エリア": {
+      "亀岡市": 20720,
+      "福知山市": 20720,
+      "舞鶴市": 20720,
+      "綾部市": 20720,
+      "宮津市": 20720,
+      "京丹後市": 20720,
+      "南丹市": 20720
+    }
+  },
+  "兵庫県": {
+    "神戸市": {
+      "神戸市東灘区": 6720,
+      "神戸市灘区": 6720,
+      "神戸市兵庫区": 6720,
+      "神戸市長田区": 6720,
+      "神戸市須磨区": 6720,
+      "神戸市垂水区": 6720,
+      "神戸市北区": 6720,
+      "神戸市中央区": 6720,
+      "神戸市西区": 6720
+    },
+    "阪神エリア": {
+      "尼崎市": 6720,
+      "西宮市": 6720,
+      "芦屋市": 6720,
+      "伊丹市": 6720,
+      "宝塚市": 6720,
+      "川西市": 6720,
+      "三田市": 6720
+    },
+    "播磨エリア": {
+      "姫路市": 9240,
+      "明石市": 6720,
+      "加古川市": 6720,
+      "赤穂市": 12320,
+      "西脇市": 9240,
+      "三木市": 6720,
+      "高砂市": 6720,
+      "小野市": 6720,
+      "加西市": 6720,
+      "加東市": 6720,
+      "たつの市": 9240
+    },
+    "但馬・丹波・淡路エリア": {
+      "洲本市": 12320,
+      "相生市": 15120,
+      "豊岡市": 20720,
+      "丹波篠山市": 13720,
+      "養父市": 23520,
+      "丹波市": 23520,
+      "南あわじ市": 15120,
+      "朝来市": 23520,
+      "淡路市": 15120,
+      "宍粟市": 23520
+    }
+  },
+  "奈良県": {
+    "北部エリア": {
+      "奈良市": 6720,
+      "大和高田市": 6720,
+      "大和郡山市": 6720,
+      "天理市": 6720,
+      "橿原市": 6720,
+      "桜井市": 6720,
+      "生駒市": 6720,
+      "香芝市": 6720,
+      "葛城市": 6720
+    },
+    "中南部エリア": {
+      "五條市": 6720,
+      "御所市": 6720,
+      "宇陀市": 12320,
+      "十津川村": 12320
+    }
+  },
+  "滋賀県": {
+    "湖南・湖東エリア": {
+      "大津市": 12320,
+      "彦根市": 12320,
+      "近江八幡市": 12320,
+      "草津市": 12320,
+      "守山市": 12320,
+      "栗東市": 12320,
+      "甲賀市": 12320,
+      "野洲市": 12320,
+      "湖南市": 12320,
+      "東近江市": 17920
+    },
+    "湖北・湖西エリア": {
+      "長浜市": 17920,
+      "高島市": 17920,
+      "米原市": 17920
+    }
+  },
+  "和歌山県": {
+    "紀北エリア": {
+      "和歌山市": 13720,
+      "海南市": 13720,
+      "橋本市": 13720,
+      "紀の川市": 13720,
+      "岩出市": 13720
+    },
+    "紀中・紀南エリア": {
+      "有田市": 17920,
+      "御坊市": 17920,
+      "田辺市": 17920,
+      "新宮市": 20720
+    }
+  }
+};
+
+// 車種データ
+const vehiclesByMaker = {
+  "ホンダ": [
+    {
+      "maker": "ホンダ",
+      "model": "スーパーカブ50",
+      "id": "honda-super_cub_50",
+      "displacement": "50cc以下",
+      "puncture_fee": "",
+      "puncture_available": "× チューブ交換のため",
+      "tube_exchange": "16800",
+      "battery_model": "YTX4L-BS",
+      "battery_fee": "12800",
+      "tire_size": "2.50-17",
+      "tire_fee": "",
+      "belt_exchange": "0"
+    },
+    {
+      "maker": "ホンダ",
+      "model": "クロスカブ50",
+      "id": "honda-cross_cub_50",
+      "displacement": "50cc以下",
+      "puncture_fee": "",
+      "puncture_available": "× チューブ交換のため",
+      "tube_exchange": "18800",
+      "battery_model": "YTX4L-BS",
+      "battery_fee": "12800",
+      "tire_size": "2.75-17",
+      "tire_fee": "",
+      "belt_exchange": "0"
+    },
+    {
+      "maker": "ホンダ",
+      "model": "Dunk",
+      "id": "honda-dunk",
+      "displacement": "50cc以下",
+      "puncture_fee": "4800",
+      "puncture_available": "",
+      "tube_exchange": "0",
+      "battery_model": "YTX4L-BS",
+      "battery_fee": "12800",
+      "tire_size": "90/90-10",
+      "tire_fee": "13800",
+      "belt_exchange": "18800"
+    },
+    {
+      "maker": "ホンダ",
+      "model": "ジョルノ",
+      "id": "honda-giorno",
+      "displacement": "50cc以下",
+      "puncture_fee": "4800",
+      "puncture_available": "",
+      "tube_exchange": "0",
+      "battery_model": "YTX4L-BS",
+      "battery_fee": "12800",
+      "tire_size": "90/90-10",
+      "tire_fee": "13800",
+      "belt_exchange": "18800"
+    },
+    {
+      "maker": "ホンダ",
+      "model": "タクト",
+      "id": "honda-tact",
+      "displacement": "50cc以下",
+      "puncture_fee": "4800",
+      "puncture_available": "",
+      "tube_exchange": "0",
+      "battery_model": "YTX4L-BS",
+      "battery_fee": "12800",
+      "tire_size": "90/90-10",
+      "tire_fee": "13800",
+      "belt_exchange": "18800"
+    },
+    {
+      "maker": "ホンダ",
+      "model": "Dio / チェスタ",
+      "id": "honda-dio_chesta",
+      "displacement": "50cc以下",
+      "puncture_fee": "4800",
+      "puncture_available": "",
+      "tube_exchange": "0",
+      "battery_model": "YTX4L-BS",
+      "battery_fee": "12800",
+      "tire_size": "90/90-10",
+      "tire_fee": "13800",
+      "belt_exchange": "18800"
+    },
+    {
+      "maker": "ホンダ",
+      "model": "スマート Dio / Z4",
+      "id": "honda-smart_dio_z4",
+      "displacement": "50cc以下",
+      "puncture_fee": "4800",
+      "puncture_available": "",
+      "tube_exchange": "0",
+      "battery_model": "YTZ7S",
+      "battery_fee": "14800",
+      "tire_size": "90/90-10",
+      "tire_fee": "13800",
+      "belt_exchange": "18800"
+    },
+    {
+      "maker": "ホンダ",
+      "model": "ライブ Dio / ZX",
+      "id": "honda-live_dio_zx",
+      "displacement": "50cc以下",
+      "puncture_fee": "4800",
+      "puncture_available": "",
+      "tube_exchange": "0",
+      "battery_model": "YTR4A-BS",
+      "battery_fee": "12800",
+      "tire_size": "90/90-10",
+      "tire_fee": "13800",
+      "belt_exchange": "18800"
+    },
+    {
+      "maker": "ホンダ",
+      "model": "Today",
+      "id": "honda-today",
+      "displacement": "50cc以下",
+      "puncture_fee": "4800",
+      "puncture_available": "",
+      "tube_exchange": "0",
+      "battery_model": "YTX4L-BS",
+      "battery_fee": "12800",
+      "tire_size": "90/90-10",
+      "tire_fee": "13800",
+      "belt_exchange": "18800"
+    },
+    {
+      "maker": "ホンダ",
+      "model": "ズーマー",
+      "id": "honda-zoomer",
+      "displacement": "50cc以下",
+      "puncture_fee": "4800",
+      "puncture_available": "",
+      "tube_exchange": "0",
+      "battery_model": "YTZ7S",
+      "battery_fee": "14800",
+      "tire_size": "130/90-10",
+      "tire_fee": "15800",
+      "belt_exchange": "18800"
+    },
+    {
+      "maker": "ホンダ",
+      "model": "モンキー",
+      "id": "honda-monkey",
+      "displacement": "50cc以下",
+      "puncture_fee": "",
+      "puncture_available": "× チューブ交換のため",
+      "tube_exchange": "",
+      "battery_model": "YTX4L-BS",
+      "battery_fee": "12800",
+      "tire_size": "3.50-10",
+      "tire_fee": "要問合せ",
+      "belt_exchange": "0"
+    },
+    {
+      "maker": "ホンダ",
+      "model": "エイプ50",
+      "id": "honda-ape50",
+      "displacement": "50cc以下",
+      "puncture_fee": "4800",
+      "puncture_available": "",
+      "tube_exchange": "",
+      "battery_model": "YTR4A-BS",
+      "battery_fee": "12800",
+      "tire_size": "2.75-17",
+      "tire_fee": "要問合せ",
+      "belt_exchange": "0"
+    },
+    {
+      "maker": "ホンダ",
+      "model": "【50cc】その他の車種",
+      "id": "honda-other-50",
+      "displacement": "50cc以下",
+      "puncture_fee": "4800",
+      "puncture_available": "",
+      "tube_exchange": "要問合せ",
+      "battery_model": "要問合せ",
+      "battery_fee": "",
+      "tire_size": "",
+      "tire_fee": "16800",
+      "belt_exchange": "-1"
+    },
+    {
+      "maker": "ホンダ",
+      "model": "スーパーカブ C125",
+      "id": "honda-super_cub_c125",
+      "displacement": "51-125cc",
+      "puncture_fee": "4800",
+      "puncture_available": "",
+      "tube_exchange": "要問合せ",
+      "battery_model": "YTZ6V",
+      "battery_fee": "14800",
+      "tire_size": "70/90-17",
+      "tire_fee": "18800",
+      "belt_exchange": "0"
+    },
+    {
+      "maker": "ホンダ",
+      "model": "CT125・ハンターカブ",
+      "id": "honda-ct125_hunter_cub",
+      "displacement": "51-125cc",
+      "puncture_fee": "",
+      "puncture_available": "× チューブ交換のため",
+      "tube_exchange": "18800",
+      "battery_model": "YTZ5S",
+      "battery_fee": "12800",
+      "tire_size": "4.10-18",
+      "tire_fee": "18800",
+      "belt_exchange": "0"
+    },
+    {
+      "maker": "ホンダ",
+      "model": "モンキー125",
+      "id": "honda-monkey125",
+      "displacement": "51-125cc",
+      "puncture_fee": "4800",
+      "puncture_available": "",
+      "tube_exchange": "",
+      "battery_model": "YTZ5S",
+      "battery_fee": "12800",
+      "tire_size": "120/80-12",
+      "tire_fee": "要問合せ",
+      "belt_exchange": "0"
+    },
+    {
+      "maker": "ホンダ",
+      "model": "GROM",
+      "id": "honda-grom",
+      "displacement": "51-125cc",
+      "puncture_fee": "4800",
+      "puncture_available": "",
+      "tube_exchange": "0",
+      "battery_model": "YTZ5S",
+      "battery_fee": "12800",
+      "tire_size": "120/70-12",
+      "tire_fee": "要問合せ",
+      "belt_exchange": "0"
+    },
+    {
+      "maker": "ホンダ",
+      "model": "PCX",
+      "id": "honda-pcx",
+      "displacement": "51-125cc",
+      "puncture_fee": "4800",
+      "puncture_available": "",
+      "tube_exchange": "0",
+      "battery_model": "GTZ8V",
+      "battery_fee": "19800",
+      "tire_size": "110/70-14",
+      "tire_fee": "19800",
+      "belt_exchange": "21800"
+    },
+    {
+      "maker": "ホンダ",
+      "model": "Dio110",
+      "id": "honda-dio110",
+      "displacement": "51-125cc",
+      "puncture_fee": "4800",
+      "puncture_available": "",
+      "tube_exchange": "0",
+      "battery_model": "YTZ7S",
+      "battery_fee": "14800",
+      "tire_size": "100/90-10",
+      "tire_fee": "22800",
+      "belt_exchange": "21800"
+    },
+    {
+      "maker": "ホンダ",
+      "model": "エイプ100",
+      "id": "honda-ape100",
+      "displacement": "51-125cc",
+      "puncture_fee": "4800",
+      "puncture_available": "",
+      "tube_exchange": "要問合せ",
+      "battery_model": "YTR4A-BS",
+      "battery_fee": "12800",
+      "tire_size": "2.75-17",
+      "tire_fee": "要問合せ",
+      "belt_exchange": "0"
+    },
+    {
+      "maker": "ホンダ",
+      "model": "【125cc】その他の車種",
+      "id": "honda-other-125",
+      "displacement": "51-125cc",
+      "puncture_fee": "4800",
+      "puncture_available": "",
+      "tube_exchange": "要問合せ",
+      "battery_model": "要問合せ",
+      "battery_fee": "",
+      "tire_size": "",
+      "tire_fee": "",
+      "belt_exchange": "-1"
+    },
+    {
+      "maker": "ホンダ",
+      "model": "Rebel 250",
+      "id": "honda-rebel_250",
+      "displacement": "126-400cc",
+      "puncture_fee": "7800",
+      "puncture_available": "",
+      "tube_exchange": "0",
+      "battery_model": "YTZ8V",
+      "battery_fee": "19800",
+      "tire_size": "130/90-16",
+      "tire_fee": "搬送対応",
+      "belt_exchange": "0"
+    },
+    {
+      "maker": "ホンダ",
+      "model": "CBR250RR",
+      "id": "honda-cbr250rr",
+      "displacement": "126-400cc",
+      "puncture_fee": "7800",
+      "puncture_available": "",
+      "tube_exchange": "0",
+      "battery_model": "YTZ7S",
+      "battery_fee": "14800",
+      "tire_size": "140/70-17",
+      "tire_fee": "搬送対応",
+      "belt_exchange": "0"
+    },
+    {
+      "maker": "ホンダ",
+      "model": "VTR250",
+      "id": "honda-vtr250",
+      "displacement": "126-400cc",
+      "puncture_fee": "7800",
+      "puncture_available": "",
+      "tube_exchange": "0",
+      "battery_model": "YTZ7S",
+      "battery_fee": "14800",
+      "tire_size": "140/70-17",
+      "tire_fee": "搬送対応",
+      "belt_exchange": "0"
+    },
+    {
+      "maker": "ホンダ",
+      "model": "ホーネット250",
+      "id": "honda-hornet250",
+      "displacement": "126-400cc",
+      "puncture_fee": "7800",
+      "puncture_available": "",
+      "tube_exchange": "0",
+      "battery_model": "YTX7L-BS",
+      "battery_fee": "17800",
+      "tire_size": "140/70-17",
+      "tire_fee": "搬送対応",
+      "belt_exchange": "0"
+    },
+    {
+      "maker": "ホンダ",
+      "model": "FTR223",
+      "id": "honda-ftr223",
+      "displacement": "126-400cc",
+      "puncture_fee": "7800",
+      "puncture_available": "",
+      "tube_exchange": "0",
+      "battery_model": "YTX5L-BS",
+      "battery_fee": "17800",
+      "tire_size": "120/80-17",
+      "tire_fee": "搬送対応",
+      "belt_exchange": "0"
+    },
+    {
+      "maker": "ホンダ",
+      "model": "フォルツァ Z/X",
+      "id": "honda-forza",
+      "displacement": "126-400cc",
+      "puncture_fee": "7800",
+      "puncture_available": "",
+      "tube_exchange": "0",
+      "battery_model": "YTZ12S",
+      "battery_fee": "19800",
+      "tire_size": "140/70-13",
+      "tire_fee": "搬送対応",
+      "belt_exchange": "-1"
+    },
+    {
+      "maker": "ホンダ",
+      "model": "フュージョン",
+      "id": "honda-fusion",
+      "displacement": "126-400cc",
+      "puncture_fee": "7800",
+      "puncture_available": "",
+      "tube_exchange": "0",
+      "battery_model": "YTX12-BS",
+      "battery_fee": "19800",
+      "tire_size": "130/70-12",
+      "tire_fee": "搬送対応",
+      "belt_exchange": "-1"
+    },
+    {
+      "maker": "ホンダ",
+      "model": "CB400 SF/SB",
+      "id": "honda-cb400_sf_sb",
+      "displacement": "126-400cc",
+      "puncture_fee": "7800",
+      "puncture_available": "",
+      "tube_exchange": "0",
+      "battery_model": "YTZ10S",
+      "battery_fee": "19800",
+      "tire_size": "150/70-17",
+      "tire_fee": "搬送対応",
+      "belt_exchange": "0"
+    },
+    {
+      "maker": "ホンダ",
+      "model": "スティード400",
+      "id": "honda-steed400",
+      "displacement": "126-400cc",
+      "puncture_fee": "7800",
+      "puncture_available": "",
+      "tube_exchange": "0",
+      "battery_model": "YTX9-BS",
+      "battery_fee": "18800",
+      "tire_size": "150/80-15",
+      "tire_fee": "搬送対応",
+      "belt_exchange": "0"
+    },
+    {
+      "maker": "ホンダ",
+      "model": "シルバーウイング400",
+      "id": "honda-silver_wing400",
+      "displacement": "126-400cc",
+      "puncture_fee": "7800",
+      "puncture_available": "",
+      "tube_exchange": "0",
+      "battery_model": "YTZ12S",
+      "battery_fee": "19800",
+      "tire_size": "150/70-13",
+      "tire_fee": "搬送対応",
+      "belt_exchange": "-1"
+    },
+    {
+      "maker": "ホンダ",
+      "model": "【400cc】その他の車種",
+      "id": "honda-other-400",
+      "displacement": "126-400cc",
+      "puncture_fee": "7800",
+      "puncture_available": "",
+      "tube_exchange": "0",
+      "battery_model": "要問合せ",
+      "battery_fee": "",
+      "tire_size": "",
+      "tire_fee": "搬送対応",
+      "belt_exchange": "-1"
+    },
+    {
+      "maker": "ホンダ",
+      "model": "CB1300 SF/SB",
+      "id": "honda-cb1300_sf_sb",
+      "displacement": "401cc以上",
+      "puncture_fee": "10800",
+      "puncture_available": "",
+      "tube_exchange": "0",
+      "battery_model": "YTZ14S",
+      "battery_fee": "26800",
+      "tire_size": "180/55-17",
+      "tire_fee": "搬送対応",
+      "belt_exchange": "0"
+    },
+    {
+      "maker": "ホンダ",
+      "model": "Rebel 1100",
+      "id": "honda-rebel_1100",
+      "displacement": "401cc以上",
+      "puncture_fee": "10800",
+      "puncture_available": "",
+      "tube_exchange": "0",
+      "battery_model": "YTZ14S",
+      "battery_fee": "26800",
+      "tire_size": "180/65-16",
+      "tire_fee": "搬送対応",
+      "belt_exchange": "0"
+    },
+    {
+      "maker": "ホンダ",
+      "model": "CRF1100L Africa Twin",
+      "id": "honda-crf1100l_africa_twin",
+      "displacement": "401cc以上",
+      "puncture_fee": "",
+      "puncture_available": "問い合わせ",
+      "tube_exchange": "0",
+      "battery_model": "YTZ14S",
+      "battery_fee": "26800",
+      "tire_size": "150/70-18",
+      "tire_fee": "搬送対応",
+      "belt_exchange": "0"
+    },
+    {
+      "maker": "ホンダ",
+      "model": "CB1100/EX",
+      "id": "honda-cb1100",
+      "displacement": "401cc以上",
+      "puncture_fee": "10800",
+      "puncture_available": "",
+      "tube_exchange": "0",
+      "battery_model": "YTZ14S",
+      "battery_fee": "26800",
+      "tire_size": "150/70-17",
+      "tire_fee": "搬送対応",
+      "belt_exchange": "0"
+    },
+    {
+      "maker": "ホンダ",
+      "model": "【401cc～】その他の車種",
+      "id": "honda-other-large",
+      "displacement": "401cc以上",
+      "puncture_fee": "10800",
+      "puncture_available": "",
+      "tube_exchange": "0",
+      "battery_model": "要問合せ",
+      "battery_fee": "",
+      "tire_size": "",
+      "tire_fee": "搬送対応",
+      "belt_exchange": "-1"
+    }
+  ],
+  "ヤマハ": [
+    {
+      "maker": "ヤマハ",
+      "model": "JOG",
+      "id": "yamaha-jog",
+      "displacement": "50cc以下",
+      "puncture_fee": "4800",
+      "puncture_available": "",
+      "tube_exchange": "0",
+      "battery_model": "YTX4L-BS",
+      "battery_fee": "12800",
+      "tire_size": "90/90-10",
+      "tire_fee": "13800",
+      "belt_exchange": "18800"
+    },
+    {
+      "maker": "ヤマハ",
+      "model": "JOG ZR",
+      "id": "yamaha-jog_zr",
+      "displacement": "50cc以下",
+      "puncture_fee": "4800",
+      "puncture_available": "",
+      "tube_exchange": "0",
+      "battery_model": "YTX4L-BS",
+      "battery_fee": "12800",
+      "tire_size": "90/90-10",
+      "tire_fee": "13800",
+      "belt_exchange": "18800"
+    },
+    {
+      "maker": "ヤマハ",
+      "model": "Vino",
+      "id": "yamaha-vino",
+      "displacement": "50cc以下",
+      "puncture_fee": "4800",
+      "puncture_available": "",
+      "tube_exchange": "0",
+      "battery_model": "YTX4L-BS",
+      "battery_fee": "12800",
+      "tire_size": "90/90-10",
+      "tire_fee": "13800",
+      "belt_exchange": "18800"
+    },
+    {
+      "maker": "ヤマハ",
+      "model": "VOX",
+      "id": "yamaha-vox",
+      "displacement": "50cc以下",
+      "puncture_fee": "4800",
+      "puncture_available": "",
+      "tube_exchange": "0",
+      "battery_model": "YTX5L-BS",
+      "battery_fee": "17800",
+      "tire_size": "120/70-10",
+      "tire_fee": "15800",
+      "belt_exchange": "18800"
+    },
+    {
+      "maker": "ヤマハ",
+      "model": "【50cc】その他の車種",
+      "id": "yamaha-other-50",
+      "displacement": "50cc以下",
+      "puncture_fee": "4800",
+      "puncture_available": "",
+      "tube_exchange": "0",
+      "battery_model": "要問合せ",
+      "battery_fee": "",
+      "tire_size": "",
+      "tire_fee": "",
+      "belt_exchange": "-1"
+    },
+    {
+      "maker": "ヤマハ",
+      "model": "NMAX",
+      "id": "yamaha-nmax",
+      "displacement": "51-125cc",
+      "puncture_fee": "4800",
+      "puncture_available": "",
+      "tube_exchange": "0",
+      "battery_model": "YTZ7V",
+      "battery_fee": "14800",
+      "tire_size": "110/80-14",
+      "tire_fee": "19800",
+      "belt_exchange": "22800"
+    },
+    {
+      "maker": "ヤマハ",
+      "model": "CYGNUS GRYPHUS",
+      "id": "yamaha-cygnus_gryphus",
+      "displacement": "51-125cc",
+      "puncture_fee": "4800",
+      "puncture_available": "",
+      "tube_exchange": "0",
+      "battery_model": "YTX5L-BS",
+      "battery_fee": "17800",
+      "tire_size": "100/90-10",
+      "tire_fee": "19800",
+      "belt_exchange": "23800"
+    },
+    {
+      "maker": "ヤマハ",
+      "model": "シグナスX SR",
+      "id": "yamaha-cygnus_x_sr",
+      "displacement": "51-125cc",
+      "puncture_fee": "4800",
+      "puncture_available": "",
+      "tube_exchange": "0",
+      "battery_model": "YTX7A-BS",
+      "battery_fee": "17800",
+      "tire_size": "110/90-13",
+      "tire_fee": "19800",
+      "belt_exchange": "21800"
+    },
+    {
+      "maker": "ヤマハ",
+      "model": "【125cc】その他の車種",
+      "id": "yamaha-other-125",
+      "displacement": "51-125cc",
+      "puncture_fee": "4800",
+      "puncture_available": "",
+      "tube_exchange": "0",
+      "battery_model": "要問合せ",
+      "battery_fee": "",
+      "tire_size": "",
+      "tire_fee": "",
+      "belt_exchange": "-1"
+    },
+    {
+      "maker": "ヤマハ",
+      "model": "YZF-R25 / MT-25",
+      "id": "yamaha-yzf-r25_mt-25",
+      "displacement": "126-400cc",
+      "puncture_fee": "7800",
+      "puncture_available": "",
+      "tube_exchange": "0",
+      "battery_model": "YTZ8V",
+      "battery_fee": "19800",
+      "tire_size": "140/70-17",
+      "tire_fee": "搬送対応",
+      "belt_exchange": "0"
+    },
+    {
+      "maker": "ヤマハ",
+      "model": "XMAX",
+      "id": "yamaha-xmax",
+      "displacement": "126-400cc",
+      "puncture_fee": "7800",
+      "puncture_available": "",
+      "tube_exchange": "0",
+      "battery_model": "YTZ8V",
+      "battery_fee": "19800",
+      "tire_size": "140/70-14",
+      "tire_fee": "搬送対応",
+      "belt_exchange": "-1"
+    },
+    {
+      "maker": "ヤマハ",
+      "model": "セロー250",
+      "id": "yamaha-serow250",
+      "displacement": "126-400cc",
+      "puncture_fee": "",
+      "puncture_available": "× 現場不可ため搬送",
+      "tube_exchange": "0",
+      "battery_model": "YTZ7S",
+      "battery_fee": "14800",
+      "tire_size": "120/80-18",
+      "tire_fee": "搬送対応",
+      "belt_exchange": "0"
+    },
+    {
+      "maker": "ヤマハ",
+      "model": "ドラッグスター250",
+      "id": "yamaha-dragstar250",
+      "displacement": "126-400cc",
+      "puncture_fee": "",
+      "puncture_available": "× 現場不可ため搬送",
+      "tube_exchange": "0",
+      "battery_model": "YTX7A-BS",
+      "battery_fee": "17800",
+      "tire_size": "140/90-15",
+      "tire_fee": "搬送対応",
+      "belt_exchange": "0"
+    },
+    {
+      "maker": "ヤマハ",
+      "model": "マジェスティ",
+      "id": "yamaha-majesty",
+      "displacement": "126-400cc",
+      "puncture_fee": "7800",
+      "puncture_available": "",
+      "tube_exchange": "0",
+      "battery_model": "YTZ10S",
+      "battery_fee": "19800",
+      "tire_size": "140/70-13",
+      "tire_fee": "搬送対応",
+      "belt_exchange": "-1"
+    },
+    {
+      "maker": "ヤマハ",
+      "model": "マグザム",
+      "id": "yamaha-maxam",
+      "displacement": "126-400cc",
+      "puncture_fee": "7800",
+      "puncture_available": "",
+      "tube_exchange": "0",
+      "battery_model": "YTZ10S",
+      "battery_fee": "19800",
+      "tire_size": "150/70-13",
+      "tire_fee": "搬送対応",
+      "belt_exchange": "-1"
+    },
+    {
+      "maker": "ヤマハ",
+      "model": "SR400",
+      "id": "yamaha-sr400",
+      "displacement": "126-400cc",
+      "puncture_fee": "",
+      "puncture_available": "× 現場不可ため搬送",
+      "tube_exchange": "0",
+      "battery_model": "YTX7L-BS",
+      "battery_fee": "17800",
+      "tire_size": "110/90-18",
+      "tire_fee": "搬送対応",
+      "belt_exchange": "0"
+    },
+    {
+      "maker": "ヤマハ",
+      "model": "ドラッグスター400",
+      "id": "yamaha-dragstar400",
+      "displacement": "126-400cc",
+      "puncture_fee": "",
+      "puncture_available": "× 現場不可ため搬送",
+      "tube_exchange": "0",
+      "battery_model": "YTZ10S",
+      "battery_fee": "19800",
+      "tire_size": "150/80-16",
+      "tire_fee": "搬送対応",
+      "belt_exchange": "0"
+    },
+    {
+      "maker": "ヤマハ",
+      "model": "【400cc】その他の車種",
+      "id": "yamaha-other-400",
+      "displacement": "126-400cc",
+      "puncture_fee": "7800",
+      "puncture_available": "",
+      "tube_exchange": "0",
+      "battery_model": "要問合せ",
+      "battery_fee": "",
+      "tire_size": "",
+      "tire_fee": "搬送対応",
+      "belt_exchange": "-1"
+    },
+    {
+      "maker": "ヤマハ",
+      "model": "MT-09/SP",
+      "id": "yamaha-mt-09_sp",
+      "displacement": "401cc以上",
+      "puncture_fee": "10800",
+      "puncture_available": "",
+      "tube_exchange": "0",
+      "battery_model": "YTZ10S",
+      "battery_fee": "19800",
+      "tire_size": "180/55-17",
+      "tire_fee": "搬送対応",
+      "belt_exchange": "0"
+    },
+    {
+      "maker": "ヤマハ",
+      "model": "XSR900",
+      "id": "yamaha-xsr900",
+      "displacement": "401cc以上",
+      "puncture_fee": "10800",
+      "puncture_available": "",
+      "tube_exchange": "0",
+      "battery_model": "YTZ10S",
+      "battery_fee": "19800",
+      "tire_size": "180/55-17",
+      "tire_fee": "搬送対応",
+      "belt_exchange": "0"
+    },
+    {
+      "maker": "ヤマハ",
+      "model": "Ténéré700",
+      "id": "yamaha-tenere700",
+      "displacement": "401cc以上",
+      "puncture_fee": "",
+      "puncture_available": "× 現場不可ため搬送",
+      "tube_exchange": "0",
+      "battery_model": "YTZ10S",
+      "battery_fee": "19800",
+      "tire_size": "150/70-18",
+      "tire_fee": "搬送対応",
+      "belt_exchange": "0"
+    },
+    {
+      "maker": "ヤマハ",
+      "model": "VMAX",
+      "id": "yamaha-vmax",
+      "displacement": "401cc以上",
+      "puncture_fee": "10800",
+      "puncture_available": "",
+      "tube_exchange": "0",
+      "battery_model": "YTZ14S",
+      "battery_fee": "26800",
+      "tire_size": "200/50-18",
+      "tire_fee": "搬送対応",
+      "belt_exchange": "0"
+    },
+    {
+      "maker": "ヤマハ",
+      "model": "【401cc～】その他の車種",
+      "id": "yamaha-other-large",
+      "displacement": "401cc以上",
+      "puncture_fee": "10800",
+      "puncture_available": "",
+      "tube_exchange": "0",
+      "battery_model": "要問合せ",
+      "battery_fee": "",
+      "tire_size": "",
+      "tire_fee": "搬送対応",
+      "belt_exchange": "-1"
+    }
+  ],
+  "スズキ": [
+    {
+      "maker": "スズキ",
+      "model": "レッツ4 / 5",
+      "id": "suzuki-lets4_5",
+      "displacement": "50cc以下",
+      "puncture_fee": "4800",
+      "puncture_available": "",
+      "tube_exchange": "0",
+      "battery_model": "YTX4L-BS",
+      "battery_fee": "12800",
+      "tire_size": "90/90-10",
+      "tire_fee": "13800",
+      "belt_exchange": "18800"
+    },
+    {
+      "maker": "スズキ",
+      "model": "アドレスV50",
+      "id": "suzuki-address_v50",
+      "displacement": "50cc以下",
+      "puncture_fee": "4800",
+      "puncture_available": "",
+      "tube_exchange": "0",
+      "battery_model": "YTX4L-BS",
+      "battery_fee": "12800",
+      "tire_size": "90/90-10",
+      "tire_fee": "13800",
+      "belt_exchange": "18800"
+    },
+    {
+      "maker": "スズキ",
+      "model": "バーディー50",
+      "id": "suzuki-birdie50",
+      "displacement": "50cc以下",
+      "puncture_fee": "",
+      "puncture_available": "× チューブ交換のため",
+      "tube_exchange": "16800",
+      "battery_model": "YTX4L-BS",
+      "battery_fee": "12800",
+      "tire_size": "2.50-17",
+      "tire_fee": "",
+      "belt_exchange": "0"
+    },
+    {
+      "maker": "スズキ",
+      "model": "【50cc】その他の車種",
+      "id": "suzuki-other-50",
+      "displacement": "50cc以下",
+      "puncture_fee": "4800",
+      "puncture_available": "",
+      "tube_exchange": "要問合せ",
+      "battery_model": "要問合せ",
+      "battery_fee": "",
+      "tire_size": "",
+      "tire_fee": "要問合せ",
+      "belt_exchange": "-1"
+    },
+    {
+      "maker": "スズキ",
+      "model": "アドレス125 / V125G/S",
+      "id": "suzuki-address125",
+      "displacement": "51-125cc",
+      "puncture_fee": "4800",
+      "puncture_available": "",
+      "tube_exchange": "0",
+      "battery_model": "YTX7A-BS",
+      "battery_fee": "17800",
+      "tire_size": "100/90-10",
+      "tire_fee": "16800",
+      "belt_exchange": "21800"
+    },
+    {
+      "maker": "スズキ",
+      "model": "【125cc】その他の車種",
+      "id": "suzuki-other-125",
+      "displacement": "51-125cc",
+      "puncture_fee": "4800",
+      "puncture_available": "",
+      "tube_exchange": "0",
+      "battery_model": "要問合せ",
+      "battery_fee": "",
+      "tire_size": "",
+      "tire_fee": "要問合せ",
+      "belt_exchange": "-1"
+    },
+    {
+      "maker": "スズキ",
+      "model": "V-Strom 250",
+      "id": "suzuki-v-strom250",
+      "displacement": "126-400cc",
+      "puncture_fee": "7800",
+      "puncture_available": "",
+      "tube_exchange": "0",
+      "battery_model": "YTX9-BS",
+      "battery_fee": "18800",
+      "tire_size": "140/70-17",
+      "tire_fee": "搬送対応",
+      "belt_exchange": "0"
+    },
+    {
+      "maker": "スズキ",
+      "model": "GSX250R",
+      "id": "suzuki-gsx250r",
+      "displacement": "126-400cc",
+      "puncture_fee": "7800",
+      "puncture_available": "",
+      "tube_exchange": "0",
+      "battery_model": "YTX9-BS",
+      "battery_fee": "18800",
+      "tire_size": "140/70-17",
+      "tire_fee": "搬送対応",
+      "belt_exchange": "0"
+    },
+    {
+      "maker": "スズキ",
+      "model": "グラストラッカー/BB",
+      "id": "suzuki-grasstracker",
+      "displacement": "126-400cc",
+      "puncture_fee": "",
+      "puncture_available": "× 現場不可ため搬送",
+      "tube_exchange": "0",
+      "battery_model": "YTX7L-BS",
+      "battery_fee": "17800",
+      "tire_size": "120/80-17",
+      "tire_fee": "搬送対応",
+      "belt_exchange": "0"
+    },
+    {
+      "maker": "スズキ",
+      "model": "スカイウェイブ250",
+      "id": "suzuki-skywave250",
+      "displacement": "126-400cc",
+      "puncture_fee": "7800",
+      "puncture_available": "",
+      "tube_exchange": "0",
+      "battery_model": "YTX9-BS",
+      "battery_fee": "18800",
+      "tire_size": "130/70-12",
+      "tire_fee": "搬送対応",
+      "belt_exchange": "-1"
+    },
+    {
+      "maker": "スズキ",
+      "model": "スカイウェイブ400",
+      "id": "suzuki-skywave400",
+      "displacement": "126-400cc",
+      "puncture_fee": "7800",
+      "puncture_available": "",
+      "tube_exchange": "0",
+      "battery_model": "YTX12-BS",
+      "battery_fee": "19800",
+      "tire_size": "140/70-13",
+      "tire_fee": "搬送対応",
+      "belt_exchange": "-1"
+    },
+    {
+      "maker": "スズキ",
+      "model": "【400cc】その他の車種",
+      "id": "suzuki-other-400",
+      "displacement": "126-400cc",
+      "puncture_fee": "7800",
+      "puncture_available": "",
+      "tube_exchange": "0",
+      "battery_model": "要問合せ",
+      "battery_fee": "",
+      "tire_size": "",
+      "tire_fee": "搬送対応",
+      "belt_exchange": "-1"
+    },
+    {
+      "maker": "スズキ",
+      "model": "Hayabusa",
+      "id": "suzuki-hayabusa",
+      "displacement": "401cc以上",
+      "puncture_fee": "10800",
+      "puncture_available": "",
+      "tube_exchange": "0",
+      "battery_model": "YTZ14S",
+      "battery_fee": "26800",
+      "tire_size": "190/50-17",
+      "tire_fee": "搬送対応",
+      "belt_exchange": "0"
+    },
+    {
+      "maker": "スズキ",
+      "model": "KATANA",
+      "id": "suzuki-katana",
+      "displacement": "401cc以上",
+      "puncture_fee": "10800",
+      "puncture_available": "",
+      "tube_exchange": "0",
+      "battery_model": "YTX12-BS",
+      "battery_fee": "19800",
+      "tire_size": "180/55-17",
+      "tire_fee": "搬送対応",
+      "belt_exchange": "0"
+    },
+    {
+      "maker": "スズキ",
+      "model": "V-Strom 800DE",
+      "id": "suzuki-v-strom800de",
+      "displacement": "401cc以上",
+      "puncture_fee": "10800",
+      "puncture_available": "",
+      "tube_exchange": "0",
+      "battery_model": "YTX12-BS",
+      "battery_fee": "19800",
+      "tire_size": "150/70-17",
+      "tire_fee": "搬送対応",
+      "belt_exchange": "0"
+    },
+    {
+      "maker": "スズキ",
+      "model": "バンディット1250",
+      "id": "suzuki-bandit1250",
+      "displacement": "401cc以上",
+      "puncture_fee": "10800",
+      "puncture_available": "",
+      "tube_exchange": "0",
+      "battery_model": "YTX12-BS",
+      "battery_fee": "19800",
+      "tire_size": "180/55-17",
+      "tire_fee": "搬送対応",
+      "belt_exchange": "0"
+    },
+    {
+      "maker": "スズキ",
+      "model": "【401cc～】その他の車種",
+      "id": "suzuki-other-large",
+      "displacement": "401cc以上",
+      "puncture_fee": "10800",
+      "puncture_available": "",
+      "tube_exchange": "0",
+      "battery_model": "要問合せ",
+      "battery_fee": "",
+      "tire_size": "",
+      "tire_fee": "搬送対応",
+      "belt_exchange": "-1"
+    }
+  ],
+  "カワサキ": [
+    {
+      "maker": "カワサキ",
+      "model": "Z125 PRO",
+      "id": "kawasaki-z125_pro",
+      "displacement": "51-125cc",
+      "puncture_fee": "4800",
+      "puncture_available": "",
+      "tube_exchange": "0",
+      "battery_model": "YTX4L-BS",
+      "battery_fee": "12800",
+      "tire_size": "120/70-12",
+      "tire_fee": "搬送対応",
+      "belt_exchange": "0"
+    },
+    {
+      "maker": "カワサキ",
+      "model": "KSR110",
+      "id": "kawasaki-ksr110",
+      "displacement": "51-125cc",
+      "puncture_fee": "4800",
+      "puncture_available": "",
+      "tube_exchange": "0",
+      "battery_model": "YTX4L-BS",
+      "battery_fee": "12800",
+      "tire_size": "120/70-12",
+      "tire_fee": "搬送対応",
+      "belt_exchange": "0"
+    },
+    {
+      "maker": "カワサキ",
+      "model": "【125cc】その他の車種",
+      "id": "kawasaki-other-125",
+      "displacement": "51-125cc",
+      "puncture_fee": "4800",
+      "puncture_available": "",
+      "tube_exchange": "0",
+      "battery_model": "要問合せ",
+      "battery_fee": "",
+      "tire_size": "",
+      "tire_fee": "搬送対応",
+      "belt_exchange": "-1"
+    },
+    {
+      "maker": "カワサキ",
+      "model": "Ninja 250",
+      "id": "kawasaki-ninja250",
+      "displacement": "126-400cc",
+      "puncture_fee": "7800",
+      "puncture_available": "",
+      "tube_exchange": "0",
+      "battery_model": "YTX9-BS",
+      "battery_fee": "18800",
+      "tire_size": "140/70-17",
+      "tire_fee": "搬送対応",
+      "belt_exchange": "0"
+    },
+    {
+      "maker": "カワサキ",
+      "model": "Ninja 250R",
+      "id": "kawasaki-ninja250r",
+      "displacement": "126-400cc",
+      "puncture_fee": "7800",
+      "puncture_available": "",
+      "tube_exchange": "0",
+      "battery_model": "YTX9-BS",
+      "battery_fee": "18800",
+      "tire_size": "140/70-17",
+      "tire_fee": "搬送対応",
+      "belt_exchange": "0"
+    },
+    {
+      "maker": "カワサキ",
+      "model": "エストレヤ",
+      "id": "kawasaki-estrella",
+      "displacement": "126-400cc",
+      "puncture_fee": "",
+      "puncture_available": "× 現場不可ため搬送",
+      "tube_exchange": "0",
+      "battery_model": "YTX9-BS",
+      "battery_fee": "18800",
+      "tire_size": "110/80-17",
+      "tire_fee": "搬送対応",
+      "belt_exchange": "0"
+    },
+    {
+      "maker": "カワサキ",
+      "model": "250TR",
+      "id": "kawasaki-250tr",
+      "displacement": "126-400cc",
+      "puncture_fee": "",
+      "puncture_available": "× 現場不可ため搬送",
+      "tube_exchange": "0",
+      "battery_model": "YTX7L-BS",
+      "battery_fee": "17800",
+      "tire_size": "110/90-18",
+      "tire_fee": "搬送対応",
+      "belt_exchange": "0"
+    },
+    {
+      "maker": "カワサキ",
+      "model": "D-TRACKER",
+      "id": "kawasaki-d-tracker",
+      "displacement": "126-400cc",
+      "puncture_fee": "7800",
+      "puncture_available": "",
+      "tube_exchange": "0",
+      "battery_model": "YTX7L-BS",
+      "battery_fee": "17800",
+      "tire_size": "120/80-18",
+      "tire_fee": "搬送対応",
+      "belt_exchange": "0"
+    },
+    {
+      "maker": "カワサキ",
+      "model": "Ninja 400",
+      "id": "kawasaki-ninja400",
+      "displacement": "126-400cc",
+      "puncture_fee": "7800",
+      "puncture_available": "",
+      "tube_exchange": "0",
+      "battery_model": "YTX9-BS",
+      "battery_fee": "18800",
+      "tire_size": "150/60-17",
+      "tire_fee": "搬送対応",
+      "belt_exchange": "0"
+    },
+    {
+      "maker": "カワサキ",
+      "model": "ZRX400-II",
+      "id": "kawasaki-zrx400-ii",
+      "displacement": "126-400cc",
+      "puncture_fee": "7800",
+      "puncture_available": "",
+      "tube_exchange": "0",
+      "battery_model": "YTX9-BS",
+      "battery_fee": "18800",
+      "tire_size": "150/70-17",
+      "tire_fee": "搬送対応",
+      "belt_exchange": "0"
+    },
+    {
+      "maker": "カワサキ",
+      "model": "ゼファーχ",
+      "id": "kawasaki-zephyr_x",
+      "displacement": "126-400cc",
+      "puncture_fee": "7800",
+      "puncture_available": "",
+      "tube_exchange": "0",
+      "battery_model": "YTX12-BS",
+      "battery_fee": "19800",
+      "tire_size": "150/70-17",
+      "tire_fee": "搬送対応",
+      "belt_exchange": "0"
+    },
+    {
+      "maker": "カワサキ",
+      "model": "【400cc】その他の車種",
+      "id": "kawasaki-other-400",
+      "displacement": "126-400cc",
+      "puncture_fee": "7800",
+      "puncture_available": "",
+      "tube_exchange": "0",
+      "battery_model": "要問合せ",
+      "battery_fee": "",
+      "tire_size": "",
+      "tire_fee": "搬送対応",
+      "belt_exchange": "-1"
+    },
+    {
+      "maker": "カワサキ",
+      "model": "Z900RS",
+      "id": "kawasaki-z900rs",
+      "displacement": "401cc以上",
+      "puncture_fee": "10800",
+      "puncture_available": "",
+      "tube_exchange": "0",
+      "battery_model": "YTX9-BS",
+      "battery_fee": "18800",
+      "tire_size": "180/55-17",
+      "tire_fee": "搬送対応",
+      "belt_exchange": "0"
+    },
+    {
+      "maker": "カワサキ",
+      "model": "W800",
+      "id": "kawasaki-w800",
+      "displacement": "401cc以上",
+      "puncture_fee": "",
+      "puncture_available": "× 現場不可ため搬送",
+      "tube_exchange": "0",
+      "battery_model": "YTX12-BS",
+      "battery_fee": "19800",
+      "tire_size": "130/80-17",
+      "tire_fee": "搬送対応",
+      "belt_exchange": "0"
+    },
+    {
+      "maker": "カワサキ",
+      "model": "ZRX1200 DAEG",
+      "id": "kawasaki-zrx1200_daeg",
+      "displacement": "401cc以上",
+      "puncture_fee": "10800",
+      "puncture_available": "",
+      "tube_exchange": "0",
+      "battery_model": "YTX14-BS",
+      "battery_fee": "26800",
+      "tire_size": "180/55-17",
+      "tire_fee": "搬送対応",
+      "belt_exchange": "0"
+    },
+    {
+      "maker": "カワサキ",
+      "model": "ZRX1200R",
+      "id": "kawasaki-zrx1200r",
+      "displacement": "401cc以上",
+      "puncture_fee": "10800",
+      "puncture_available": "",
+      "tube_exchange": "0",
+      "battery_model": "YTX14-BS",
+      "battery_fee": "26800",
+      "tire_size": "180/55-17",
+      "tire_fee": "搬送対応",
+      "belt_exchange": "0"
+    },
+    {
+      "maker": "カワサキ",
+      "model": "Ninja ZX-14R",
+      "id": "kawasaki-ninja_zx-14r",
+      "displacement": "401cc以上",
+      "puncture_fee": "10800",
+      "puncture_available": "",
+      "tube_exchange": "0",
+      "battery_model": "YTX14-BS",
+      "battery_fee": "26800",
+      "tire_size": "190/50-17",
+      "tire_fee": "搬送対応",
+      "belt_exchange": "0"
+    },
+    {
+      "maker": "カワサキ",
+      "model": "【401cc～】その他の車種",
+      "id": "kawasaki-other-large",
+      "displacement": "401cc以上",
+      "puncture_fee": "10800",
+      "puncture_available": "",
+      "tube_exchange": "0",
+      "battery_model": "要問合せ",
+      "battery_fee": "",
+      "tire_size": "",
+      "tire_fee": "搬送対応",
+      "belt_exchange": "-1"
+    }
+  ]
+};
+
+// 距離料金テーブル
+const fareTable = {"50~125クラス": {"10": 13800, "11": 14233, "12": 14667, "13": 15100, "14": 15533, "15": 15967, "16": 16400, "17": 16833, "18": 17267, "19": 17700, "20": 18133, "21": 18567, "22": 19000, "23": 19433, "24": 19867, "25": 20300, "26": 20733, "27": 21167, "28": 21600, "29": 22033, "30": 22467, "31": 22900, "32": 23333, "33": 23767, "34": 24200, "35": 24633, "36": 25067, "37": 25500, "38": 25933, "39": 26367, "40": 26800, "41": 27233, "42": 27667, "43": 28100, "44": 28533, "45": 28967, "46": 29400, "47": 29833, "48": 30267, "49": 30700, "50": 31133, "51": 31567, "52": 32000, "53": 32433, "54": 32867, "55": 33300, "56": 33733, "57": 34167, "58": 34600, "59": 35033, "60": 35467, "61": 35900, "62": 36333, "63": 36767, "64": 37200, "65": 37633, "66": 38067, "67": 38500, "68": 38933, "69": 39367, "70": 39800, "71": 40233, "72": 40667, "73": 41100, "74": 41533, "75": 41967, "76": 42400, "77": 42833, "78": 43267, "79": 43700, "80": 44133, "81": 44567, "82": 45000, "83": 45433, "84": 45867, "85": 46300, "86": 46733, "87": 47167, "88": 47600, "89": 48033, "90": 48467, "91": 48900, "92": 49333, "93": 49767, "94": 50200, "95": 50633, "96": 51067, "97": 51500, "98": 51933, "99": 52367, "100": 52800}, "160~200クラス": {"10": 15800, "11": 16269, "12": 16738, "13": 17208, "14": 17677, "15": 18146, "16": 18615, "17": 19084, "18": 19554, "19": 20023, "20": 20492, "21": 20961, "22": 21430, "23": 21900, "24": 22369, "25": 22838, "26": 23307, "27": 23776, "28": 24246, "29": 24715, "30": 25184, "31": 25653, "32": 26122, "33": 26592, "34": 27061, "35": 27530, "36": 28000, "37": 28469, "38": 28938, "39": 29407, "40": 29876, "41": 30346, "42": 30815, "43": 31284, "44": 31753, "45": 32222, "46": 32692, "47": 33161, "48": 33630, "49": 34100, "50": 34569, "51": 35038, "52": 35507, "53": 35976, "54": 36446, "55": 36915, "56": 37384, "57": 37853, "58": 38322, "59": 38792, "60": 39261, "61": 39730, "62": 40200, "63": 40669, "64": 41138, "65": 41607, "66": 42076, "67": 42546, "68": 43015, "69": 43484, "70": 43953, "71": 44422, "72": 44892, "73": 45361, "74": 45830, "75": 46300, "76": 46769, "77": 47238, "78": 47707, "79": 48176, "80": 48646, "81": 49115, "82": 49584, "83": 50053, "84": 50522, "85": 50992, "86": 51461, "87": 51930, "88": 52400, "89": 52869, "90": 53338, "91": 53807, "92": 54276, "93": 54746, "94": 55215, "95": 55684, "96": 56153, "97": 56622, "98": 57092, "99": 57561, "100": 58030}, "250~400クラス": {"10": 17800, "11": 18267, "12": 18733, "13": 19200, "14": 19667, "15": 20133, "16": 20600, "17": 21067, "18": 21533, "19": 22000, "20": 22467, "21": 22933, "22": 23400, "23": 23867, "24": 24333, "25": 24800, "26": 25267, "27": 25733, "28": 26200, "29": 26667, "30": 27133, "31": 27600, "32": 28067, "33": 28533, "34": 29000, "35": 29467, "36": 29933, "37": 30400, "38": 30867, "39": 31333, "40": 31800, "41": 32267, "42": 32733, "43": 33200, "44": 33667, "45": 34133, "46": 34600, "47": 35067, "48": 35533, "49": 36000, "50": 36467, "51": 36933, "52": 37400, "53": 37867, "54": 38333, "55": 38800, "56": 39267, "57": 39733, "58": 40200, "59": 40667, "60": 41133, "61": 41600, "62": 42067, "63": 42533, "64": 43000, "65": 43467, "66": 43933, "67": 44400, "68": 44867, "69": 45333, "70": 45800, "71": 46267, "72": 46733, "73": 47200, "74": 47667, "75": 48133, "76": 48600, "77": 49067, "78": 49533, "79": 50000, "80": 50467, "81": 50933, "82": 51400, "83": 51867, "84": 52333, "85": 52800, "86": 53267, "87": 53733, "88": 54200, "89": 54667, "90": 55133, "91": 55600, "92": 56067, "93": 56533, "94": 57000, "95": 57467, "96": 57933, "97": 58400, "98": 58867, "99": 59333, "100": 59800}, "500~650クラス": {"10": 20000, "11": 20505, "12": 21011, "13": 21516, "14": 22021, "15": 22526, "16": 23032, "17": 23537, "18": 24042, "19": 24547, "20": 25053, "21": 25558, "22": 26063, "23": 26568, "24": 27074, "25": 27579, "26": 28084, "27": 28589, "28": 29095, "29": 29600, "30": 30105, "31": 30611, "32": 31116, "33": 31621, "34": 32126, "35": 32632, "36": 33137, "37": 33642, "38": 34147, "39": 34653, "40": 35158, "41": 35663, "42": 36168, "43": 36674, "44": 37179, "45": 37684, "46": 38189, "47": 38695, "48": 39200, "49": 39705, "50": 40211, "51": 40716, "52": 41221, "53": 41726, "54": 42232, "55": 42737, "56": 43242, "57": 43747, "58": 44253, "59": 44758, "60": 45263, "61": 45768, "62": 46274, "63": 46779, "64": 47284, "65": 47789, "66": 48295, "67": 48800, "68": 49305, "69": 49811, "70": 50316, "71": 50821, "72": 51326, "73": 51832, "74": 52337, "75": 52842, "76": 53347, "77": 53853, "78": 54358, "79": 54863, "80": 55368, "81": 55874, "82": 56379, "83": 56884, "84": 57389, "85": 57895, "86": 58400, "87": 58905, "88": 59411, "89": 59916, "90": 60421, "91": 60926, "92": 61432, "93": 61937, "94": 62442, "95": 62947, "96": 63453, "97": 63958, "98": 64463, "99": 64968, "100": 65474}, "750~1000クラス": {"10": 22800, "11": 23389, "12": 23978, "13": 24567, "14": 25156, "15": 25744, "16": 26333, "17": 26922, "18": 27511, "19": 28100, "20": 28689, "21": 29278, "22": 29867, "23": 30456, "24": 31044, "25": 31633, "26": 32222, "27": 32811, "28": 33400, "29": 33989, "30": 34578, "31": 35167, "32": 35756, "33": 36344, "34": 36933, "35": 37522, "36": 38111, "37": 38700, "38": 39289, "39": 39878, "40": 40467, "41": 41056, "42": 41644, "43": 42233, "44": 42822, "45": 43411, "46": 44000, "47": 44589, "48": 45178, "49": 45767, "50": 46356, "51": 46944, "52": 47533, "53": 48122, "54": 48711, "55": 49300, "56": 49889, "57": 50478, "58": 51067, "59": 51656, "60": 52244, "61": 52833, "62": 53422, "63": 54011, "64": 54600, "65": 55189, "66": 55778, "67": 56367, "68": 56956, "69": 57544, "70": 58133, "71": 58722, "72": 59311, "73": 59900, "74": 60489, "75": 61078, "76": 61667, "77": 62256, "78": 62844, "79": 63433, "80": 64022, "81": 64611, "82": 65200, "83": 65789, "84": 66378, "85": 66967, "86": 67556, "87": 68144, "88": 68733, "89": 69322, "90": 69911, "91": 70500, "92": 71089, "93": 71678, "94": 72267, "95": 72856, "96": 73444, "97": 74033, "98": 74622, "99": 75211, "100": 75800}, "1000~ハーレー": {"10": 33800, "11": 34489, "12": 35178, "13": 35867, "14": 36556, "15": 37244, "16": 37933, "17": 38622, "18": 39311, "19": 40000, "20": 40689, "21": 41378, "22": 42067, "23": 42756, "24": 43444, "25": 44133, "26": 44822, "27": 45511, "28": 46200, "29": 46889, "30": 47578, "31": 48267, "32": 48956, "33": 49644, "34": 50333, "35": 51022, "36": 51711, "37": 52400, "38": 53089, "39": 53778, "40": 54467, "41": 55156, "42": 55844, "43": 56533, "44": 57222, "45": 57911, "46": 58600, "47": 59289, "48": 59978, "49": 60667, "50": 61356, "51": 62044, "52": 62733, "53": 63422, "54": 64111, "55": 64800, "56": 65489, "57": 66178, "58": 66867, "59": 67556, "60": 68244, "61": 68933, "62": 69622, "63": 70311, "64": 71000, "65": 71689, "66": 72378, "67": 73067, "68": 73756, "69": 74444, "70": 75133, "71": 75822, "72": 76511, "73": 77200, "74": 77889, "75": 78578, "76": 79267, "77": 79956, "78": 80644, "79": 81333, "80": 82022, "81": 82711, "82": 83400, "83": 84089, "84": 84778, "85": 85467, "86": 86156, "87": 86844, "88": 87533, "89": 88222, "90": 88911, "91": 89600, "92": 90289, "93": 90978, "94": 91667, "95": 92356, "96": 93044, "97": 93733, "98": 94422, "99": 95111, "100": 95800}};
+
+// 時間帯料金
+const timeCharges = {"day": 0, "evening": 3000, "night": 5000, "early": 3000};
+
+// 事故時係数
+const accidentMultiplier = {"50~125クラス": 1.45, "160~200クラス": 1.5, "250~400クラス": 1.55, "500~650クラス": 1.6, "750~1000クラス": 1.6, "1000~ハーレー": 1.9};
+
+
+        // ===== 状態管理 =====
+        let estimateData = {
+            serviceType: '', // 'towing' or 'repair'
+            prefecture: '',
+            area: '',
+            municipality: '',
+            areaFee: 0,
+            bikeClass: '',
+            displacement: 0,
+            distance: 0,
+            distanceFee: 0,
+            timeSlot: '',
+            timeFee: 0,
+            maker: '', // 出張修理の場合
+            vehicle: null, // 出張修理の場合
+            repairType: '', // 出張修理の場合
+            repairFee: 0,
+            situation: '', // レッカーの場合: 'normal' or 'accident'
+            name: '', // お名前
+            phone: '', // 携帯番号
+            total: 0
+        };
+
+        let currentStep = 0;
+        let isEstimateComplete = false; // 見積もり完了フラグ
+
+        // ===== ヘルパー関数 =====
+        function getCurrentAreaFees() {
+            return estimateData.serviceType === 'repair' ? repairAreaFees : towingAreaFees;
+        }
+
+        function addMessage(content, type) {
+            const messagesDiv = document.getElementById('chatMessages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'message ' + type;
+            messageDiv.innerHTML = '<div class="message-content">' + content + '</div>';
+            messagesDiv.appendChild(messageDiv);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+
+        // ===== 初期化 =====
+        window.onload = function() {
+            const welcomeMsg = '<p>こんにちは！RESCUE-1の料金シミュレーターです。</p>' +
+                '<p>ご利用になるサービスを選択してください：</p>' +
+                '<div class="quick-replies">' +
+                '<button class="quick-reply-btn" onclick="selectService(\'towing\')">🚗 レッカーサービス</button>' +
+                '<button class="quick-reply-btn" onclick="selectService(\'repair\')">🔧 出張修理</button>' +
+                '</div>';
+            addMessage(welcomeMsg, 'bot');
+        };
+
+        // ===== サービス選択 =====
+        function selectService(service) {
+            estimateData.serviceType = service;
+            if (service === 'towing') {
+                addMessage('レッカーサービスを選択しました。', 'user');
+            } else {
+                addMessage('出張修理サービスを選択しました。', 'user');
+            }
+            showPrefectureSelect();
+        }
+
+        // ===== 出発地選択 =====
+        function showPrefectureSelect() {
+            const currentFees = getCurrentAreaFees();
+            const prefectures = Object.keys(currentFees);
+            const options = prefectures.map(function(p) { 
+                return '<option value="' + p + '">' + p + '</option>'; 
+            }).join('');
+            
+            const msg = '<p>出発地の都道府県を選択してください：</p>' +
+                '<select id="prefectureSelect" class="select-input" onchange="onPrefectureChange()">' +
+                '<option value="">-- 都道府県を選択 --</option>' + options + '</select>';
+            addMessage(msg, 'bot');
+        }
+
+        function onPrefectureChange() {
+            if (isEstimateComplete) return; // 見積もり完了後は実行しない
+            
+            const select = document.getElementById('prefectureSelect');
+            const prefecture = select.value;
+            if (!prefecture) return;
+            
+            estimateData.prefecture = prefecture;
+            const currentFees = getCurrentAreaFees();
+            const areas = Object.keys(currentFees[prefecture]);
+            const options = areas.map(function(a) { 
+                return '<option value="' + a + '">' + a + '</option>'; 
+            }).join('');
+            
+            const msg = '<p>エリアを選択してください：</p>' +
+                '<select id="areaSelect" class="select-input" onchange="onAreaChange()">' +
+                '<option value="">-- エリアを選択 --</option>' + options + '</select>';
+            addMessage(msg, 'bot');
+        }
+
+        function onAreaChange() {
+            if (isEstimateComplete) return; // 見積もり完了後は実行しない
+            
+            const select = document.getElementById('areaSelect');
+            const area = select.value;
+            if (!area) return;
+            
+            estimateData.area = area;
+            const currentFees = getCurrentAreaFees();
+            const municipalities = currentFees[estimateData.prefecture][area];
+            const options = Object.keys(municipalities).map(function(m) {
+                return '<option value="' + m + '">' + m + '</option>';
+            }).join('');
+            
+            const msg = '<p>市区町村を選択してください：</p>' +
+                '<select id="municipalitySelect" class="select-input" onchange="onMunicipalityChange()">' +
+                '<option value="">-- 市区町村を選択 --</option>' + options + '</select>';
+            addMessage(msg, 'bot');
+        }
+
+        function onMunicipalityChange() {
+            if (isEstimateComplete) return; // 見積もり完了後は実行しない
+            
+            const select = document.getElementById('municipalitySelect');
+            const municipality = select.value;
+            if (!municipality) return;
+            
+            estimateData.municipality = municipality;
+            const currentFees = getCurrentAreaFees();
+            estimateData.areaFee = currentFees[estimateData.prefecture][estimateData.area][municipality];
+            
+            addMessage(estimateData.prefecture + ' ' + municipality, 'user');
+            submitLocation();
+        }
+
+        function submitLocation() {
+            if (estimateData.serviceType === 'towing') {
+                showBikeClassSelect();
+            } else {
+                showMakerSelect();
+            }
+        }
+
+        // ===== レッカーサービス =====
+        function showBikeClassSelect() {
+            const msg = '<p>バイクのクラスを選択してください：</p>' +
+                '<div class="button-group">' +
+                '<button class="option-btn" onclick="selectBikeClass(\'50~125クラス\')">50~125cc</button>' +
+                '<button class="option-btn" onclick="selectBikeClass(\'160~200クラス\')">160~200cc</button>' +
+                '<button class="option-btn" onclick="selectBikeClass(\'250~400クラス\')">250~400cc</button>' +
+                '<button class="option-btn" onclick="selectBikeClass(\'500~650クラス\')">500~650cc</button>' +
+                '<button class="option-btn" onclick="selectBikeClass(\'750~1000クラス\')">750~1000cc</button>' +
+                '<button class="option-btn" onclick="selectBikeClass(\'1000~ハーレー\')">1000cc~ハーレー</button>' +
+                '</div>';
+            addMessage(msg, 'bot');
+        }
+
+        function selectBikeClass(bikeClass) {
+            estimateData.bikeClass = bikeClass;
+            addMessage(bikeClass, 'user');
+            
+            // 大阪エリア以外で10インチ以外の場合、予約必要メッセージを表示
+            if (estimateData.prefecture !== '大阪府' && bikeClass !== '50~125クラス') {
+                showReservationRequired();
+            } else {
+                showDistanceSlider();
+            }
+        }
+
+        // ===== 予約必要メッセージ =====
+        function showReservationRequired() {
+            const msg = '<div style="background: #FFF3E0; padding: 20px; border-radius: 10px; border-left: 4px solid #FF9800; margin: 10px 0;">' +
+                '<p style="font-size: 16px; font-weight: bold; color: #E65100; margin-bottom: 15px;">📅 予約必要</p>' +
+                '<p style="font-size: 14px; color: #333; margin-bottom: 15px; line-height: 1.6;">予約が必要です。</p>' +
+                '<p style="font-size: 14px; color: #666; margin-bottom: 20px;">お電話でご予約をお願いいたします。</p>' +
+                '<a href="tel:050-5527-6162" style="display: block; background: #D32F2F; color: white; text-decoration: none; padding: 15px; border-radius: 10px; text-align: center; font-size: 18px; font-weight: bold; margin-bottom: 10px;">📞 050-5527-6162</a>' +
+                '<button class="option-btn" onclick="continueWithReservation()" style="width: 100%; padding: 15px; font-size: 14px; background: #2196F3; color: white;">見積もりを続ける</button>' +
+                '</div>';
+            addMessage(msg, 'bot');
+        }
+
+        function continueWithReservation() {
+            addMessage('見積もりを続ける', 'user');
+            setTimeout(function() {
+                showDistanceSlider();
+            }, 300);
+        }
+
+        function showDistanceSlider() {
+            const msg = '<p>搬送距離を選択してください：</p>' +
+                '<div class="distance-slider-container">' +
+                '<input type="range" id="distanceSlider" min="10" max="100" value="10" oninput="updateDistance()" class="select-input">' +
+                '<div class="distance-value" id="distanceValue">10km</div>' +
+                '</div>' +
+                '<button class="quick-reply-btn" onclick="submitDistance()" style="margin-top:15px;">この距離で決定</button>';
+            addMessage(msg, 'bot');
+        }
+
+        function updateDistance() {
+            const slider = document.getElementById('distanceSlider');
+            const display = document.getElementById('distanceValue');
+            display.textContent = slider.value + 'km';
+        }
+
+        function submitDistance() {
+            const slider = document.getElementById('distanceSlider');
+            estimateData.distance = parseInt(slider.value);
+            estimateData.distanceFee = fareTable[estimateData.bikeClass][estimateData.distance];
+            
+            addMessage(estimateData.distance + 'km', 'user');
+            showDestinationInput();
+        }
+
+        // ===== 行き先入力（バイクレッカーのみ） =====
+        function showDestinationInput() {
+            const msg = '<p>行き先を入力してください：</p>' +
+                '<div style="margin-top: 15px;">' +
+                '<input type="text" id="destinationPrefecture" class="select-input" placeholder="都道府県（例：東京都）" style="margin-bottom: 10px;">' +
+                '<input type="text" id="destinationCity" class="select-input" placeholder="市町村（例：渋谷区）" style="margin-bottom: 15px;">' +
+                '<button class="option-btn" onclick="submitDestination()" style="width: 100%; padding: 15px; font-size: 16px;">次へ</button>' +
+                '</div>';
+            addMessage(msg, 'bot');
+        }
+
+        function submitDestination() {
+            const prefecture = document.getElementById('destinationPrefecture').value.trim();
+            const city = document.getElementById('destinationCity').value.trim();
+            
+            if (!prefecture) {
+                alert('都道府県を入力してください');
+                return;
+            }
+            
+            if (!city) {
+                alert('市町村を入力してください');
+                return;
+            }
+            
+            estimateData.destinationPrefecture = prefecture;
+            estimateData.destinationCity = city;
+            
+            addMessage('行き先: ' + prefecture + ' ' + city, 'user');
+            
+            setTimeout(function() {
+                showTimeSlotSelect();
+            }, 300);
+        }
+
+        // ===== 出張修理サービス =====
+        function showMakerSelect() {
+            const makers = Object.keys(vehiclesByMaker);
+            const buttons = makers.map(function(maker) {
+                return '<button class="option-btn" onclick="selectMaker(\'' + maker + '\')">' + maker + '</button>';
+            }).join('');
+            
+            const msg = '<p>メーカーを選択してください：</p>' +
+                '<div class="button-group">' + buttons + '</div>';
+            addMessage(msg, 'bot');
+        }
+
+        function selectMaker(maker) {
+            estimateData.maker = maker;
+            addMessage(maker, 'user');
+            showModelSelect();
+        }
+
+        function showModelSelect() {
+            const maker = estimateData.maker;
+            const models = vehiclesByMaker[maker];
+            
+            const options = models.map(function(v) {
+                return '<option value="' + v.id + '">' + v.model + ' (' + v.displacement + ')</option>';
+            }).join('');
+            
+            const msg = '<p>車種を選択してください：</p>' +
+                '<select id="modelSelect" class="select-input" onchange="selectModel()">' +
+                '<option value="">-- 車種を選択 --</option>' + options + '</select>';
+            addMessage(msg, 'bot');
+        }
+
+        function selectModel() {
+            const modelId = document.getElementById('modelSelect').value;
+            if (!modelId) return;
+            
+            let selectedVehicle = null;
+            for (const maker in vehiclesByMaker) {
+                const vehicle = vehiclesByMaker[maker].find(function(v) { return v.id === modelId; });
+                if (vehicle) {
+                    selectedVehicle = vehicle;
+                    break;
+                }
+            }
+            
+            if (selectedVehicle) {
+                estimateData.vehicle = selectedVehicle;
+                addMessage(selectedVehicle.model, 'user');
+                showRepairTypeSelect();
+            }
+        }
+
+        function showRepairTypeSelect() {
+            const vehicle = estimateData.vehicle;
+            const repairOptions = [];
+            
+            if (vehicle.puncture_fee && vehicle.puncture_fee !== '' && vehicle.puncture_fee !== '0') {
+                const fee = parseInt(vehicle.puncture_fee);
+                if (!isNaN(fee)) {
+                    repairOptions.push({ type: 'パンク修理', fee: fee, id: 'puncture' });
+                }
+            }
+            
+            if (vehicle.tube_exchange && vehicle.tube_exchange !== '' && vehicle.tube_exchange !== '0') {
+                const fee = parseInt(vehicle.tube_exchange);
+                if (!isNaN(fee)) {
+                    repairOptions.push({ type: 'チューブ交換', fee: fee, id: 'tube' });
+                }
+            }
+            
+            if (vehicle.battery_fee && vehicle.battery_fee !== '' && vehicle.battery_fee !== '0' && vehicle.battery_fee !== '要問合せ') {
+                const fee = parseInt(vehicle.battery_fee);
+                if (!isNaN(fee)) {
+                    repairOptions.push({ type: 'バッテリー交換 (' + vehicle.battery_model + ')', fee: fee, id: 'battery' });
+                }
+            }
+            
+            if (vehicle.tire_fee && vehicle.tire_fee !== '' && vehicle.tire_fee !== '0' && vehicle.tire_fee !== '搬送対応' && vehicle.tire_fee !== '要問合せ') {
+                const fee = parseInt(vehicle.tire_fee);
+                if (!isNaN(fee)) {
+                    repairOptions.push({ type: 'タイヤ交換 (' + vehicle.tire_size + ')', fee: fee, id: 'tire' });
+                }
+            }
+            
+            if (vehicle.belt_exchange && vehicle.belt_exchange !== '' && vehicle.belt_exchange !== '0' && vehicle.belt_exchange !== '-1') {
+                const fee = parseInt(vehicle.belt_exchange);
+                if (!isNaN(fee)) {
+                    repairOptions.push({ type: 'ベルト交換', fee: fee, id: 'belt' });
+                }
+            }
+            
+            if (repairOptions.length === 0) {
+                addMessage('申し訳ございません。この車種では出張修理サービスをご利用いただけません。お電話でお問い合わせください。', 'bot');
+                return;
+            }
+            
+            const buttons = repairOptions.map(function(option) {
+                return '<button class="option-btn" onclick="selectRepairType(\'' + option.id + '\', \'' + option.type.replace(/'/g, "\\'") + '\', ' + option.fee + ')">' + option.type + '<br><small>¥' + option.fee.toLocaleString() + '</small></button>';
+            }).join('');
+            
+            const msg = '<p>修理内容を選択してください：</p>' +
+                '<div class="button-group">' + buttons + '</div>';
+            addMessage(msg, 'bot');
+        }
+
+        function selectRepairType(id, type, fee) {
+            estimateData.repairType = type;
+            estimateData.repairFee = fee;
+            addMessage(type, 'user');
+            
+            // パンク修理の場合は注意事項を表示
+            if (id === 'puncture') {
+                showPunctureWarning();
+            } 
+            // タイヤ交換の場合、大阪以外で125cc以下は要予約
+            else if (id === 'tire') {
+                const displacement = parseInt(estimateData.vehicle.displacement);
+                if (estimateData.prefecture !== '大阪府' && !isNaN(displacement) && displacement <= 125) {
+                    showRepairReservationRequired('タイヤ交換');
+                } else {
+                    showTimeSlotSelect();
+                }
+            }
+            // ベルト交換の場合、大阪以外は要予約
+            else if (id === 'belt') {
+                if (estimateData.prefecture !== '大阪府') {
+                    showRepairReservationRequired('ベルト交換');
+                } else {
+                    showTimeSlotSelect();
+                }
+            }
+            else {
+                showTimeSlotSelect();
+            }
+        }
+
+        // ===== 出張修理の要予約メッセージ =====
+        function showRepairReservationRequired(repairTypeName) {
+            const msg = '<div style="background: #FFF3E0; padding: 20px; border-radius: 10px; border-left: 4px solid #FF9800; margin: 10px 0;">' +
+                '<p style="font-size: 16px; font-weight: bold; color: #E65100; margin-bottom: 15px;">📅 要予約</p>' +
+                '<p style="font-size: 14px; color: #333; margin-bottom: 15px; line-height: 1.6;">予約が必要です。</p>' +
+                '<p style="font-size: 14px; color: #666; margin-bottom: 20px;">お電話でご予約をお願いいたします。</p>' +
+                '<a href="tel:050-5527-6162" style="display: block; background: #D32F2F; color: white; text-decoration: none; padding: 15px; border-radius: 10px; text-align: center; font-size: 18px; font-weight: bold; margin-bottom: 10px;">📞 050-5527-6162</a>' +
+                '<button class="option-btn" onclick="continueWithRepairReservation()" style="width: 100%; padding: 15px; font-size: 14px; background: #2196F3; color: white;">見積もりを続ける</button>' +
+                '</div>';
+            addMessage(msg, 'bot');
+        }
+
+        function continueWithRepairReservation() {
+            addMessage('見積もりを続ける', 'user');
+            setTimeout(function() {
+                showTimeSlotSelect();
+            }, 300);
+        }
+
+        // ===== パンク修理の注意事項 =====
+        function showPunctureWarning() {
+            const msg = '<div style="background: #FFF3E0; padding: 20px; border-radius: 10px; border-left: 4px solid #FF9800; margin: 10px 0;">' +
+                '<p style="font-size: 16px; font-weight: bold; color: #E65100; margin-bottom: 15px;">⚠️ パンク修理について</p>' +
+                '<p style="font-size: 14px; color: #333; margin-bottom: 10px; line-height: 1.6;">製造から１年以上のタイヤはパンク再発の恐れのため交換となります。</p>' +
+                '<p style="font-size: 14px; color: #333; margin-bottom: 20px; line-height: 1.6;">穴が２mm以上の場合、タイヤ横面は交換となります。</p>' +
+                '<div style="display: flex; flex-direction: column; gap: 10px;">' +
+                '<button class="option-btn" onclick="confirmPunctureWarning()" style="width: 100%; padding: 15px; font-size: 16px; background: #06C755; color: white;">確認しました（パンク修理）</button>' +
+                '<button class="option-btn" onclick="switchToTireReplacement()" style="width: 100%; padding: 15px; font-size: 16px; background: #D32F2F; color: white;">このまま進むとタイヤ交換へ</button>' +
+                '</div>' +
+                '</div>';
+            addMessage(msg, 'bot');
+        }
+
+        function confirmPunctureWarning() {
+            addMessage('確認しました（パンク修理）', 'user');
+            setTimeout(function() {
+                showTimeSlotSelect();
+            }, 300);
+        }
+
+        function switchToTireReplacement() {
+            const vehicle = estimateData.vehicle;
+            
+            // タイヤ交換の料金を取得
+            if (vehicle.tire_fee && vehicle.tire_fee !== '' && vehicle.tire_fee !== '0' && vehicle.tire_fee !== '搬送対応' && vehicle.tire_fee !== '要問合せ') {
+                const fee = parseInt(vehicle.tire_fee);
+                if (!isNaN(fee)) {
+                    // タイヤ交換に切り替え
+                    estimateData.repairType = 'タイヤ交換 (' + vehicle.tire_size + ')';
+                    estimateData.repairFee = fee;
+                    
+                    addMessage('このまま進むとタイヤ交換へ', 'user');
+                    
+                    setTimeout(function() {
+                        showTimeSlotSelect();
+                    }, 300);
+                } else {
+                    // 料金が無効な場合はレッカー搬送へ
+                    switchToTowingService();
+                }
+            } else {
+                // タイヤ交換が未対応の場合はレッカー搬送へ
+                switchToTowingService();
+            }
+        }
+
+        function switchToTowingService() {
+            addMessage('このまま進むとタイヤ交換へ', 'user');
+            
+            const msg = '<div style="background: #E3F2FD; padding: 20px; border-radius: 10px; border-left: 4px solid #2196F3; margin: 10px 0;">' +
+                '<p style="font-size: 16px; font-weight: bold; color: #1565C0; margin-bottom: 15px;">🚚 搬送対応となります</p>' +
+                '<p style="font-size: 14px; color: #333; margin-bottom: 15px; line-height: 1.6;">タイヤ交換が未対応の車種です。<br>レッカー搬送での対応となります。</p>' +
+                '<p style="font-size: 14px; color: #666; margin-bottom: 20px;">レッカーサービスのお見積もりを続けます。</p>' +
+                '</div>';
+            addMessage(msg, 'bot');
+            
+            // サービスタイプをレッカーに変更
+            estimateData.serviceType = 'towing';
+            
+            // 出張修理で入力した情報をクリア
+            estimateData.repairType = '';
+            estimateData.repairFee = 0;
+            
+            // バイククラス選択へ（都道府県・市区町村は既に入力済み）
+            setTimeout(function() {
+                showBikeClassSelect();
+            }, 1000);
+        }
+
+        // ===== 時間帯選択（共通） =====
+        function showTimeSlotSelect() {
+            const msg = '<p>ご利用時間帯を選択してください：</p>' +
+                '<div class="button-group">' +
+                '<button class="option-btn" onclick="selectTimeSlot(\'day\', \'日中 (7:00-19:00)\')">日中 (7:00-19:00)</button>' +
+                '<button class="option-btn" onclick="selectTimeSlot(\'evening\', \'夜間 (19:00-21:00) +¥3,000\')">夜間 (19:00-21:00) +¥3,000</button>' +
+                '<button class="option-btn" onclick="selectTimeSlot(\'night\', \'深夜 (21:00-5:00) +¥5,000\')">深夜 (21:00-5:00) +¥5,000</button>' +
+                '<button class="option-btn" onclick="selectTimeSlot(\'early\', \'早朝 (5:00-7:00) +¥3,000\')">早朝 (5:00-7:00) +¥3,000</button>' +
+                '</div>';
+            addMessage(msg, 'bot');
+        }
+
+        function selectTimeSlot(slot, text) {
+            estimateData.timeSlot = slot;
+            estimateData.timeFee = timeCharges[slot];
+            addMessage(text, 'user');
+            
+            if (estimateData.serviceType === 'towing') {
+                showSituationSelect();
+            } else {
+                // 出張修理の場合：仮の情報で料金を計算して表示
+                estimateData.name = '（未入力）';
+                estimateData.phone = '（未入力）';
+                
+                setTimeout(function() {
+                    calculateEstimatePreview();
+                }, 500);
+            }
+        }
+
+        // ===== 状況選択（レッカーのみ） =====
+        function showSituationSelect() {
+            const msg = '<p>状況を選択してください（任意）：</p>' +
+                '<div class="button-group">' +
+                '<button class="option-btn" onclick="selectSituation(\'none\')">軽微な故障</button>' +
+                '<button class="option-btn" onclick="selectSituation(\'accident\')">手押しができない事故</button>' +
+                '<button class="option-btn" onclick="selectSituation(\'insurance\')">任意保険の利用</button>' +
+                '<button class="option-btn" onclick="selectSituation(\'minor\')">軽微な事故</button>' +
+                '</div>';
+            addMessage(msg, 'bot');
+        }
+
+        function selectSituation(situation) {
+            estimateData.situation = situation;
+            let situationText = '';
+            
+            if (situation === 'none') {
+                situationText = '軽微な故障';
+            } else if (situation === 'accident') {
+                situationText = '手押しができない事故';
+            } else if (situation === 'insurance') {
+                situationText = '任意保険の利用';
+            } else if (situation === 'minor') {
+                situationText = '軽微な事故';
+            }
+            
+            addMessage(situationText, 'user');
+            
+            // 任意保険の場合は特別処理
+            if (situation === 'insurance') {
+                setTimeout(function() {
+                    showInsuranceMessage();
+                }, 500);
+            } else {
+                // 保険以外の場合：仮の情報で料金を計算して表示
+                estimateData.name = '（未入力）';
+                estimateData.phone = '（未入力）';
+                
+                setTimeout(function() {
+                    calculateEstimatePreview();
+                }, 500);
+            }
+        }
+        
+        // ===== 任意保険の場合のメッセージ =====
+        function showInsuranceMessage() {
+            // 見積もり完了フラグを設定（エリア選択の再表示を防ぐ）
+            isEstimateComplete = true;
+            
+            const msg = '<div style="background: #FFF3E0; padding: 20px; border-radius: 10px; border-left: 4px solid #FF9800; margin: 10px 0;">' +
+                '<p style="font-size: 18px; font-weight: bold; color: #E65100; margin-bottom: 10px;">【現金精算なし】</p>' +
+                '<p style="font-size: 16px; margin-bottom: 5px;">任意保険での対応となります</p>' +
+                '<p style="font-size: 12px; color: #666; margin-bottom: 15px;">保険案件は現金カード価格とは異なります。</p>' +
+                '<p style="font-size: 16px; font-weight: bold; margin-bottom: 10px;">担当者へ電話</p>' +
+                '<a href="tel:050-5527-6162" style="display: block; background: #D32F2F; color: white; text-decoration: none; padding: 15px; border-radius: 10px; text-align: center; font-size: 18px; font-weight: bold; margin: 10px 0;">📞 050-5527-6162</a>' +
+                '</div>';
+            addMessage(msg, 'bot');
+            
+            // トップページへ戻るボタンを表示
+            setTimeout(function() {
+                const backMsg = '<button class="option-btn" onclick="window.location.href=\'https://rescue-1.jp/\'" style="background: #666; color: white; width: 100%; padding: 15px; font-size: 16px; margin-top: 10px;">トップページへ戻る</button>';
+                addMessage(backMsg, 'bot');
+            }, 500);
+        }
+        
+        // ===== 料金プレビュー計算（名前入力前）=====
+        function calculateEstimatePreview() {
+            if (estimateData.serviceType === 'towing') {
+                // レッカーの合計計算
+                let baseFee = estimateData.areaFee + estimateData.distanceFee;
+                if (estimateData.situation === 'accident') {
+                    baseFee = Math.round(baseFee * accidentMultiplier[estimateData.bikeClass]);
+                }
+                estimateData.total = baseFee + estimateData.timeFee;
+            } else {
+                // 出張修理の合計計算
+                estimateData.total = estimateData.areaFee + estimateData.repairFee + estimateData.timeFee;
+            }
+            
+            showEstimatePreview();
+        }
+        
+        // ===== 料金プレビュー表示 =====
+        function showEstimatePreview() {
+            // 見積もり完了フラグを設定（エリア選択の再表示を防ぐ）
+            isEstimateComplete = true;
+            
+            let msg = '<div style="background: #E3F2FD; padding: 20px; border-radius: 10px; border: 2px solid #2196F3; margin: 10px 0;">';
+            msg += '<p style="font-size: 18px; font-weight: bold; color: #1565C0; margin-bottom: 15px;">💰 お見積もり料金</p>';
+            
+            // 明細を追加
+            msg += '<div style="background: white; padding: 12px; border-radius: 8px; margin-bottom: 15px;">';
+            msg += '<p style="font-size: 11px; color: #666; margin-bottom: 8px; font-weight: bold;">【明細】</p>';
+            
+            if (estimateData.serviceType === 'towing') {
+                // レッカーの明細
+                msg += '<p style="font-size: 11px; color: #333; display: flex; justify-content: space-between; margin: 3px 0;"><span>出張料</span><span>¥' + estimateData.areaFee.toLocaleString() + '</span></p>';
+                msg += '<p style="font-size: 11px; color: #333; display: flex; justify-content: space-between; margin: 3px 0;"><span>距離料金 (' + estimateData.distance + 'km)</span><span>¥' + estimateData.distanceFee.toLocaleString() + '</span></p>';
+                if (estimateData.situation === 'accident') {
+                    msg += '<p style="font-size: 11px; color: #333; display: flex; justify-content: space-between; margin: 3px 0;"><span>事故時追加料金</span><span>×' + accidentMultiplier[estimateData.bikeClass] + '</span></p>';
+                }
+                if (estimateData.timeFee > 0) {
+                    msg += '<p style="font-size: 11px; color: #333; display: flex; justify-content: space-between; margin: 3px 0;"><span>時間帯追加料金</span><span>¥' + estimateData.timeFee.toLocaleString() + '</span></p>';
+                }
+            } else {
+                // 出張修理の明細
+                msg += '<p style="font-size: 11px; color: #333; display: flex; justify-content: space-between; margin: 3px 0;"><span>出張料金</span><span>¥' + estimateData.areaFee.toLocaleString() + '</span></p>';
+                msg += '<p style="font-size: 11px; color: #333; display: flex; justify-content: space-between; margin: 3px 0;"><span>作業料金</span><span>¥' + estimateData.repairFee.toLocaleString() + '</span></p>';
+                if (estimateData.timeFee > 0) {
+                    msg += '<p style="font-size: 11px; color: #333; display: flex; justify-content: space-between; margin: 3px 0;"><span>時間帯追加料金</span><span>¥' + estimateData.timeFee.toLocaleString() + '</span></p>';
+                }
+            }
+            
+            msg += '</div>';
+            
+            msg += '<p style="font-size: 28px; font-weight: bold; color: #D32F2F; margin-bottom: 5px;">合計: ¥' + estimateData.total.toLocaleString() + '</p>';
+            msg += '<p style="font-size: 12px; color: #666;">※この見積もりは概算です</p>';
+            msg += '</div>';
+            addMessage(msg, 'bot');
+            
+            // 料金表示後、LINE割引案内を表示
+            setTimeout(function() {
+                showLineDiscountOffer();
+            }, 500);
+        }
+
+        // ===== お客様情報入力 =====
+        function showContactForm() {
+            const msg = '<p>最後に、お客様情報を入力してください：</p>' +
+                '<div style="margin-top: 15px;">' +
+                '<input type="text" id="customerName" class="select-input" placeholder="お名前" style="margin-bottom: 10px;">' +
+                '<input type="tel" id="customerPhone" class="select-input" placeholder="携帯番号（例：090-1234-5678）" style="margin-bottom: 15px;">' +
+                '<button class="option-btn" onclick="submitContactInfo()" style="width: 100%; padding: 15px; font-size: 16px;">見積もりを確認する</button>' +
+                '</div>';
+            addMessage(msg, 'bot');
+        }
+
+        function submitContactInfo() {
+            const name = document.getElementById('customerName').value.trim();
+            const phone = document.getElementById('customerPhone').value.trim();
+            
+            if (!name) {
+                alert('お名前を入力してください');
+                return;
+            }
+            
+            if (!phone) {
+                alert('携帯番号を入力してください');
+                return;
+            }
+            
+            estimateData.name = name;
+            estimateData.phone = phone;
+            
+            addMessage('お名前: ' + name + '<br>携帯番号: ' + phone, 'user');
+            
+            // 名前・電話番号入力後、位置情報添付確認へ
+            setTimeout(function() {
+                showLocationAttachment();
+            }, 500);
+        }
+
+        // ===== 位置情報添付確認 =====
+        function showLocationAttachment() {
+            const msg = '<p style="font-size: 16px; font-weight: bold; margin-bottom: 15px;">位置情報を添付しますか？</p>' +
+                '<p style="font-size: 14px; color: #666; margin-bottom: 20px;">現在地の位置情報を担当者に送信できます</p>' +
+                '<div class="button-group" style="display: flex; gap: 10px;">' +
+                '<button class="option-btn" onclick="submitLocationChoice(true)" style="background: #06C755; color: white; flex: 1;">はい</button>' +
+                '<button class="option-btn" onclick="submitLocationChoice(false)" style="background: #999; color: white; flex: 1;">いいえ</button>' +
+                '</div>';
+            addMessage(msg, 'bot');
+        }
+
+        function submitLocationChoice(hasLocation) {
+            estimateData.hasLocation = hasLocation;
+            
+            if (hasLocation) {
+                addMessage('はい', 'user');
+                
+                // 位置情報を取得
+                addMessage('位置情報を取得しています...', 'bot');
+                
+                if (navigator.geolocation) {
+                    navigator.geolocation.getCurrentPosition(
+                        function(position) {
+                            // 位置情報取得成功
+                            estimateData.latitude = position.coords.latitude;
+                            estimateData.longitude = position.coords.longitude;
+                            
+                            addMessage('✓ 位置情報を取得しました', 'bot');
+                            
+                            // LINE送信画面へ
+                            setTimeout(function() {
+                                sendToLine();
+                            }, 500);
+                        },
+                        function(error) {
+                            // 位置情報取得失敗
+                            let errorMsg = '';
+                            switch(error.code) {
+                                case error.PERMISSION_DENIED:
+                                    errorMsg = '位置情報の利用が許可されていません。';
+                                    break;
+                                case error.POSITION_UNAVAILABLE:
+                                    errorMsg = '位置情報が取得できませんでした。';
+                                    break;
+                                case error.TIMEOUT:
+                                    errorMsg = '位置情報の取得がタイムアウトしました。';
+                                    break;
+                                default:
+                                    errorMsg = '位置情報の取得に失敗しました。';
+                                    break;
+                            }
+                            
+                            const msg = '<div style="background: #FFEBEE; padding: 15px; border-radius: 10px; border-left: 4px solid #F44336; margin: 10px 0;">' +
+                                '<p style="font-size: 14px; color: #C62828; margin-bottom: 10px;">' + errorMsg + '</p>' +
+                                '<p style="font-size: 13px; color: #666;">位置情報なしで続行します。</p>' +
+                                '</div>';
+                            addMessage(msg, 'bot');
+                            
+                            // 位置情報なしでLINE送信へ
+                            estimateData.hasLocation = false;
+                            setTimeout(function() {
+                                sendToLine();
+                            }, 1500);
+                        },
+                        {
+                            enableHighAccuracy: true,
+                            timeout: 10000,
+                            maximumAge: 0
+                        }
+                    );
+                } else {
+                    // Geolocation API非対応
+                    const msg = '<div style="background: #FFEBEE; padding: 15px; border-radius: 10px; border-left: 4px solid #F44336; margin: 10px 0;">' +
+                        '<p style="font-size: 14px; color: #C62828; margin-bottom: 10px;">お使いの端末は位置情報に対応していません。</p>' +
+                        '<p style="font-size: 13px; color: #666;">位置情報なしで続行します。</p>' +
+                        '</div>';
+                    addMessage(msg, 'bot');
+                    
+                    estimateData.hasLocation = false;
+                    setTimeout(function() {
+                        sendToLine();
+                    }, 1500);
+                }
+            } else {
+                addMessage('いいえ', 'user');
+                
+                // 位置情報確認後、LINE送信画面へ
+                setTimeout(function() {
+                    sendToLine();
+                }, 300);
+            }
+        }
+
+        // ===== 見積もり計算 =====
+        function calculateEstimate() {
+            if (estimateData.serviceType === 'towing') {
+                // レッカーの合計計算
+                let baseFee = estimateData.areaFee + estimateData.distanceFee;
+                if (estimateData.situation === 'accident') {
+                    baseFee = Math.round(baseFee * accidentMultiplier[estimateData.bikeClass]);
+                }
+                estimateData.total = baseFee + estimateData.timeFee;
+            } else {
+                // 出張修理の合計計算
+                estimateData.total = estimateData.areaFee + estimateData.repairFee + estimateData.timeFee;
+            }
+            
+            showEstimateSummary();
+        }
+
+        // ===== 見積もり概要表示 =====
+        function showEstimateSummary() {
+            let summaryMsg = '<div style="background: #E3F2FD; padding: 20px; border-radius: 10px; border: 2px solid #2196F3; margin: 10px 0;">';
+            summaryMsg += '<p style="font-size: 18px; font-weight: bold; color: #1565C0; margin-bottom: 15px;">💰 お見積もり料金</p>';
+            
+            // 明細を追加
+            summaryMsg += '<div style="background: white; padding: 12px; border-radius: 8px; margin-bottom: 15px;">';
+            summaryMsg += '<p style="font-size: 11px; color: #666; margin-bottom: 8px; font-weight: bold;">【明細】</p>';
+            
+            if (estimateData.serviceType === 'towing') {
+                // レッカーの明細
+                summaryMsg += '<p style="font-size: 11px; color: #333; display: flex; justify-content: space-between; margin: 3px 0;"><span>出張料</span><span>¥' + estimateData.areaFee.toLocaleString() + '</span></p>';
+                summaryMsg += '<p style="font-size: 11px; color: #333; display: flex; justify-content: space-between; margin: 3px 0;"><span>距離料金 (' + estimateData.distance + 'km)</span><span>¥' + estimateData.distanceFee.toLocaleString() + '</span></p>';
+                if (estimateData.situation === 'accident') {
+                    summaryMsg += '<p style="font-size: 11px; color: #333; display: flex; justify-content: space-between; margin: 3px 0;"><span>事故時追加料金</span><span>×' + accidentMultiplier[estimateData.bikeClass] + '</span></p>';
+                }
+                if (estimateData.timeFee > 0) {
+                    summaryMsg += '<p style="font-size: 11px; color: #333; display: flex; justify-content: space-between; margin: 3px 0;"><span>時間帯追加料金</span><span>¥' + estimateData.timeFee.toLocaleString() + '</span></p>';
+                }
+            } else {
+                // 出張修理の明細
+                summaryMsg += '<p style="font-size: 11px; color: #333; display: flex; justify-content: space-between; margin: 3px 0;"><span>出張料金</span><span>¥' + estimateData.areaFee.toLocaleString() + '</span></p>';
+                summaryMsg += '<p style="font-size: 11px; color: #333; display: flex; justify-content: space-between; margin: 3px 0;"><span>作業料金</span><span>¥' + estimateData.repairFee.toLocaleString() + '</span></p>';
+                if (estimateData.timeFee > 0) {
+                    summaryMsg += '<p style="font-size: 11px; color: #333; display: flex; justify-content: space-between; margin: 3px 0;"><span>時間帯追加料金</span><span>¥' + estimateData.timeFee.toLocaleString() + '</span></p>';
+                }
+            }
+            
+            summaryMsg += '</div>';
+            
+            summaryMsg += '<p style="font-size: 28px; font-weight: bold; color: #D32F2F; margin-bottom: 5px;">合計: ¥' + estimateData.total.toLocaleString() + '</p>';
+            summaryMsg += '<p style="font-size: 12px; color: #666;">※この見積もりは概算です</p>';
+            summaryMsg += '</div>';
+            summaryMsg += '<p style="margin-top: 15px;">この内容で相談しますか？</p>';
+            summaryMsg += '<div class="button-group" style="margin-top: 10px;">';
+            summaryMsg += '<button class="option-btn" onclick="confirmConsultation(true)" style="background: #4CAF50; color: white;">はい</button>';
+            summaryMsg += '<button class="option-btn" onclick="confirmConsultation(false)" style="background: #999; color: white;">いいえ</button>';
+            summaryMsg += '</div>';
+            
+            addMessage(summaryMsg, 'bot');
+        }
+
+        // ===== 相談確認 =====
+        function confirmConsultation(confirmed) {
+            if (confirmed) {
+                addMessage('はい', 'user');
+                showLineDiscountOffer();
+            } else {
+                addMessage('いいえ', 'user');
+                addMessage('ご利用ありがとうございました。またのご利用をお待ちしております。', 'bot');
+                showContactNumbers();
+            }
+        }
+
+        // ===== LINE割引案内 =====
+        function showLineDiscountOffer() {
+            const discountMsg = '<div style="background: #E8F5E9; padding: 15px; border-radius: 10px; margin: 10px 0; border: 2px solid #4CAF50;">' +
+                '<p style="font-weight: bold; color: #2E7D32; margin-bottom: 10px;">💰 LINE送信で¥1,000割引！</p>' +
+                '<p style="margin-bottom: 5px;">担当者にLINEで見積もりを送信すると</p>' +
+                '<p style="margin-bottom: 10px;">問診時間短縮のため<strong style="color: #D32F2F;">¥1,000割引</strong>になります</p>' +
+                '<p style="font-size: 20px; font-weight: bold; color: #D32F2F;">割引後: ¥' + (estimateData.total - 1000).toLocaleString() + '</p>' +
+                '</div>' +
+                '<p style="margin-top: 15px;">送信しますか？</p>' +
+                '<div class="button-group" style="margin-top: 10px;">' +
+                '<button class="option-btn" onclick="confirmLineSubmit(true)" style="background: #06C755; color: white;">はい（LINE送信）</button>' +
+                '<button class="option-btn" onclick="confirmLineSubmit(false)" style="background: #999; color: white;">いいえ</button>' +
+                '</div>';
+            
+            addMessage(discountMsg, 'bot');
+        }
+
+        // ===== LINE送信確認 =====
+        function confirmLineSubmit(confirmed) {
+            if (confirmed) {
+                addMessage('はい(LINE送信)', 'user');
+                // LINE割引を適用
+                estimateData.total = estimateData.total - 1000;
+                // 名前・電話番号入力へ
+                setTimeout(function() {
+                    showContactForm();
+                }, 300);
+            } else {
+                addMessage('いいえ', 'user');
+                addMessage('承知しました。お電話でのご相談をお待ちしております。', 'bot');
+                showContactNumbers();
+            }
+        }
+
+        // ===== 電話番号表示 =====
+        function showContactNumbers() {
+            const contactMsg = '<div style="background: #FFF3E0; padding: 20px; border-radius: 10px; margin: 15px 0; border: 2px solid #FF9800;">' +
+                '<p style="font-weight: bold; font-size: 16px; margin-bottom: 15px; color: #E65100;">📞 お問い合わせ先</p>' +
+                '<div style="margin-bottom: 15px; padding: 10px; background: white; border-radius: 5px;">' +
+                '<p style="font-weight: bold; margin-bottom: 5px;">出動依頼の確認</p>' +
+                '<a href="tel:050-5527-6162" style="font-size: 20px; color: #D32F2F; text-decoration: none; font-weight: bold;">📞 050-5527-6162</a>' +
+                '</div>' +
+                '<div style="padding: 10px; background: white; border-radius: 5px;">' +
+                '<p style="font-weight: bold; margin-bottom: 5px;">相談</p>' +
+                '<a href="tel:050-5846-4108" style="font-size: 20px; color: #D32F2F; text-decoration: none; font-weight: bold;">📞 050-5846-4108</a>' +
+                '</div>' +
+                '</div>';
+            
+            addMessage(contactMsg, 'bot');
+        }
+
+        // ===== 結果表示 =====
+        function calculateAndShowResult() {
+            if (estimateData.serviceType === 'towing') {
+                // レッカーの合計計算（割引は既に適用済み）
+                
+                // 内訳
+                let breakdownHTML = '<div class="result-breakdown">';
+                breakdownHTML += '<p><span>出張料</span><span>¥' + estimateData.areaFee.toLocaleString() + '</span></p>';
+                breakdownHTML += '<p><span>距離料金 (' + estimateData.distance + 'km)</span><span>¥' + estimateData.distanceFee.toLocaleString() + '</span></p>';
+                if (estimateData.situation === 'accident') {
+                    breakdownHTML += '<p><span>事故時追加料金</span><span>×' + accidentMultiplier[estimateData.bikeClass] + '</span></p>';
+                }
+                if (estimateData.timeFee > 0) {
+                    breakdownHTML += '<p><span>時間帯追加料金</span><span>¥' + estimateData.timeFee.toLocaleString() + '</span></p>';
+                }
+                
+                // LINE割引を表示
+                breakdownHTML += '<p style="color: #4CAF50; font-weight: bold;"><span>LINE送信割引</span><span>-¥1,000</span></p>';
+                
+                // 任意保険の場合
+                if (estimateData.situation === 'insurance') {
+                    breakdownHTML += '<p style="color: #D32F2F; font-weight: bold; margin-top: 10px;"><span>【現金精算なし】</span></p>';
+                    breakdownHTML += '<p style="color: #666; font-size: 12px;"><span>任意保険での対応</span></p>';
+                    breakdownHTML += '<p style="color: #666; font-size: 11px; margin-top: 5px;"><span>保険案件は現金カード価格とは異なります。</span></p>';
+                }
+                
+                breakdownHTML += '</div>';
+                
+                document.getElementById('resultBreakdown').innerHTML = breakdownHTML;
+            } else {
+                // 出張修理の合計計算（割引は既に適用済み）
+                
+                // 内訳
+                let breakdownHTML = '<div class="result-breakdown">';
+                breakdownHTML += '<p><span>出張料金</span><span>¥' + estimateData.areaFee.toLocaleString() + '</span></p>';
+                breakdownHTML += '<p><span>作業料金</span><span>¥' + estimateData.repairFee.toLocaleString() + '</span></p>';
+                if (estimateData.timeFee > 0) {
+                    breakdownHTML += '<p><span>時間帯追加料金</span><span>¥' + estimateData.timeFee.toLocaleString() + '</span></p>';
+                }
+                
+                // LINE割引を表示
+                breakdownHTML += '<p style="color: #4CAF50; font-weight: bold;"><span>LINE送信割引</span><span>-¥1,000</span></p>';
+                
+                breakdownHTML += '</div>';
+                
+                document.getElementById('resultBreakdown').innerHTML = breakdownHTML;
+            }
+            
+            document.getElementById('resultTotal').textContent = '合計: ¥' + estimateData.total.toLocaleString();
+            document.getElementById('resultPanel').style.display = 'block';
+            
+            isEstimateComplete = true; // 見積もり完了フラグを設定
+            
+            addMessage('お見積もりが完了しました！', 'bot');
+            showContactNumbers();
+        }
+
+        // ===== LINE送信確認 =====
+        function showLineSendConfirmation() {
+            const msg = '<p style="font-size: 16px; font-weight: bold; margin-bottom: 15px;">この内容でLINEに送信しますか？</p>' +
+                '<p style="font-size: 14px; color: #666; margin-bottom: 20px;">見積もり内容を担当者に送信できます</p>' +
+                '<div class="button-group" style="display: flex; gap: 10px;">' +
+                '<button class="option-btn" onclick="confirmLineSend(true)" style="background: #06C755; color: white; flex: 1;">はい（送信する）</button>' +
+                '<button class="option-btn" onclick="confirmLineSend(false)" style="background: #999; color: white; flex: 1;">いいえ</button>' +
+                '</div>';
+            addMessage(msg, 'bot');
+        }
+
+        function confirmLineSend(willSend) {
+            if (willSend) {
+                addMessage('はい（送信する）', 'user');
+                // 名前・携帯番号入力へ
+                setTimeout(function() {
+                    showContactForm();
+                }, 300);
+            } else {
+                addMessage('いいえ', 'user');
+                // LINE送信しない場合は、仮の情報で見積もりを表示
+                estimateData.name = '（未入力）';
+                estimateData.phone = '（未入力）';
+                calculateEstimate();
+                
+                // 見積もり表示後、トップページへ戻るボタンを表示
+                setTimeout(function() {
+                    const msg = '<p style="font-size: 16px; margin-bottom: 15px;">ご利用ありがとうございました。</p>' +
+                        '<button class="option-btn" onclick="window.location.href=\'https://rescue-1.jp/\'" style="background: #D32F2F; color: white; width: 100%; padding: 15px; font-size: 16px;">トップページへ戻る</button>';
+                    addMessage(msg, 'bot');
+                }, 1500);
+            }
+        }
+
+        // ===== 最終確認（見積もり確認後） =====
+        function showFinalConfirmation() {
+            const msg = '<p style="font-size: 16px; font-weight: bold; margin-bottom: 15px;">この問診データを送信、担当者と連絡しますか？</p>' +
+                '<p style="font-size: 14px; color: #666; margin-bottom: 20px;">LINEで問診内容を送信できます</p>' +
+                '<div class="button-group" style="display: flex; gap: 10px;">' +
+                '<button class="option-btn" onclick="confirmFinalSend(true)" style="background: #06C755; color: white; flex: 1;">はい（送信する）</button>' +
+                '<button class="option-btn" onclick="confirmFinalSend(false)" style="background: #999; color: white; flex: 1;">いいえ（終了）</button>' +
+                '</div>';
+            addMessage(msg, 'bot');
+        }
+
+        function confirmFinalSend(willSend) {
+            if (willSend) {
+                addMessage('はい（送信する）', 'user');
+                // LINE送信画面を表示
+                setTimeout(function() {
+                    sendToLine();
+                }, 300);
+            } else {
+                addMessage('いいえ（終了）', 'user');
+                // トップページへ戻る
+                setTimeout(function() {
+                    const msg = '<p style="font-size: 16px; margin-bottom: 15px;">ご利用ありがとうございました。</p>' +
+                        '<button class="option-btn" onclick="window.location.href=\'https://rescue-1.jp/\'" style="background: #D32F2F; color: white; width: 100%; padding: 15px; font-size: 16px;">トップページへ戻る</button>';
+                    addMessage(msg, 'bot');
+                }, 300);
+            }
+        }
+
+        // ===== LINE送信 =====
+        function sendToLine() {
+            // 見積もり内容を作成
+            let message = '【RESCUE-1 お見積もり】\n\n';
+            
+            // お客様情報
+            message += '■お客様情報\n';
+            message += 'お名前: ' + estimateData.name + '\n';
+            message += '携帯番号: ' + estimateData.phone + '\n';
+            
+            // 位置情報の有無（レッカーサービスの場合のみ）
+            if (estimateData.serviceType === 'towing' && estimateData.hasLocation !== undefined) {
+                if (estimateData.hasLocation && estimateData.latitude && estimateData.longitude) {
+                    message += '位置情報: 添付あり\n';
+                    message += '緯度: ' + estimateData.latitude.toFixed(6) + '\n';
+                    message += '経度: ' + estimateData.longitude.toFixed(6) + '\n';
+                    message += 'Googleマップ: https://www.google.com/maps?q=' + estimateData.latitude + ',' + estimateData.longitude + '\n';
+                } else {
+                    message += '位置情報: 添付なし\n';
+                }
+            }
+            message += '\n';
+            
+            // サービス内容
+            message += '■サービス内容\n';
+            message += 'サービス: ' + (estimateData.serviceType === 'towing' ? 'レッカー' : '出張修理') + '\n';
+            message += '出発地: ' + estimateData.prefecture + ' ' + estimateData.municipality + '\n';
+            
+            if (estimateData.serviceType === 'towing') {
+                // ★修正点 1★
+                // displacement ではなく bikeClass (例: "50~125クラス") を表示
+                message += 'バイク: ' + estimateData.bikeClass + '\n';
+                message += '距離: ' + estimateData.distance + 'km\n';
+                
+                // 行き先を追加
+                if (estimateData.destinationPrefecture && estimateData.destinationCity) {
+                    message += '行き先: ' + estimateData.destinationPrefecture + ' ' + estimateData.destinationCity + '\n';
+                }
+                
+                message += '状況: ' + (estimateData.situation === 'none' ? '軽微な故障' : estimateData.situation === 'accident' ? '手押しができない事故' : estimateData.situation === 'insurance' ? '任意保険の利用' : '軽微な事故') + '\n';
+            } else {
+                message += 'メーカー: ' + estimateData.maker + '\n';
+                message += '車種: ' + estimateData.vehicle.model + '\n';
+                message += '修理内容: ' + estimateData.repairType + '\n';
+            }
+            
+            // 任意保険の場合は現金精算なしを表示
+            if (estimateData.situation === 'insurance') {
+                message += '\n【現金精算なし】\n';
+                message += '任意保険での対応となります\n';
+                message += '※保険案件は現金カード価格とは異なります。\n';
+            }
+            
+            message += '\n💰 LINE送信割引: -¥1,000\n';
+            message += '合計金額: ¥' + estimateData.total.toLocaleString() + '\n';
+            message += '\n📞 出動依頼の確認: 050-5527-6162\n';
+            message += '📞 相談: 050-5846-4108\n';
+            message += '\n※この見積もりは概算です。実際の料金は状況により変動する場合があります。';
+            
+            // テキストエリアを作成して表示（ユーザーが送信前に確認・編集できるように）
+            const textarea = document.createElement('textarea');
+            textarea.value = message;
+            textarea.id = 'lineMessageText';
+            textarea.readOnly = false; // 編集可能にする
+            textarea.style.cssText = 'position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 90%; max-width: 500px; height: 400px; padding: 15px; font-size: 14px; border: 2px solid #D32F2F; border-radius: 10px; z-index: 10000; background: white; box-shadow: 0 10px 40px rgba(0,0,0,0.3); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;';
+            document.body.appendChild(textarea);
+            
+            // 説明テキストを追加
+            const instructionBox = document.createElement('div');
+            instructionBox.style.cssText = 'position: fixed; top: 10%; left: 50%; transform: translateX(-50%); width: 90%; max-width: 500px; padding: 15px; background: #E8F5E9; border: 2px solid #4CAF50; border-radius: 10px; z-index: 10001; text-align: center; box-shadow: 0 5px 20px rgba(0,0,0,0.2);';
+            // ★修正点 2★ 説明文を変更
+            instructionBox.innerHTML = '<p style="font-weight: bold; color: #2E7D32; margin: 0; font-size: 14px;">📱 ボタンを押すとLINEが開きます<br>内容を確認し、トーク画面で送信してください</p>';
+            document.body.appendChild(instructionBox);
+            
+            // モバイル対応：自動選択とフォーカス
+            setTimeout(function() {
+                textarea.focus();
+                textarea.select();
+                textarea.setSelectionRange(0, textarea.value.length);
+            }, 100);
+            
+            // オーバーレイを作成
+            const overlay = document.createElement('div');
+            overlay.style.cssText = 'position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); z-index: 9999;';
+            document.body.appendChild(overlay);
+            
+            // ボタンコンテナを作成
+            const buttonContainer = document.createElement('div');
+            buttonContainer.style.cssText = 'position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 10001; display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; padding: 0 10px;';
+            
+            // LINEで送信ボタン
+            const lineSendBtn = document.createElement('button');
+            lineSendBtn.textContent = '📱 LINEで送信';
+            lineSendBtn.style.cssText = 'padding: 18px 40px; font-size: 18px; font-weight: bold; background: #06C755; color: white; border: none; border-radius: 12px; cursor: pointer; width: 100%; max-width: 300px; box-shadow: 0 4px 12px rgba(6,199,85,0.3);';
+            
+            // ★修正点 3★ onclickのロジックを全面変更
+            lineSendBtn.onclick = function() {
+                // 送信するテキストを取得（ユーザーが編集した場合も考慮）
+                const txt = document.getElementById('lineMessageText').value;
+                
+                // テキストをURLエンコード
+                const encodedMessage = encodeURIComponent(txt);
+                
+                // LINEのURLスキームを作成（公式アカウント@367ajtsp宛にメッセージをセット）
+                // これにより、LINEアプリが開き、トーク入力欄に自動でテキストがセットされます。
+                const lineUrl = 'https://line.me/R/oaMessage/@367ajtsp/?' + encodedMessage;
+                
+                // ボタンのテキストを変更
+                lineSendBtn.textContent = '✅ LINEを開いています...';
+                lineSendBtn.style.background = '#2196F3';
+                
+                // LINE URLスキームを開く（主にモバイルデバイス向け）
+                window.location.href = lineUrl;
+
+                // 画面を閉じるための後処理
+                setTimeout(function() {
+                    if (document.body.contains(textarea)) {
+                        document.body.removeChild(textarea);
+                    }
+                    if (document.body.contains(overlay)) {
+                        document.body.removeChild(overlay);
+                    }
+                    if (document.body.contains(buttonContainer)) {
+                        document.body.removeChild(buttonContainer);
+                    }
+                    if (document.body.contains(instructionBox)) {
+                        document.body.removeChild(instructionBox);
+                    }
+                }, 1500); // 1.5秒後に実行
+            };
+            
+            buttonContainer.appendChild(lineSendBtn);
+            document.body.appendChild(buttonContainer);
+            
+            // オーバーレイクリックで閉じる
+            overlay.onclick = function() {
+                document.body.removeChild(textarea);
+                document.body.removeChild(overlay);
+                document.body.removeChild(buttonContainer);
+                document.body.removeChild(instructionBox);
+            };
+        }
+
+        // ===== 電話発信 =====
+        function callRescue() {
+            window.location.href = 'tel:050-5527-6162';
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,21 @@
+{
+  "name": "rescue1-chatbot",
+  "version": "1.0.0",
+  "description": "RESCUE-1 料金シミュレーター with チャットボット",
+  "main": "index.js",
+  "scripts": {
+    "dev": "vercel dev",
+    "deploy": "vercel --prod"
+  },
+  "keywords": [
+    "chatbot",
+    "claude",
+    "rescue1"
+  ],
+  "author": "RESCUE-1",
+  "license": "MIT",
+  "dependencies": {},
+  "devDependencies": {
+    "@vercel/node": "^3.0.0"
+  }
+}

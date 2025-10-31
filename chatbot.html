@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RESCUE-1 料金シミュレーター with チャットボット</title>
+    <style>
+        /* 既存のスタイルを維持 */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary-color: #D32F2F;
+            --light-primary-color: #FFEBEE;
+            --text-color: #222;
+            --border-color: #ddd;
+            --bg-color: #f7f7fb;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: var(--bg-color);
+            min-height: 100vh;
+        }
+
+        /* チャットボタン */
+        .chat-button {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            box-shadow: 0 4px 20px rgba(102, 126, 234, 0.4);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+            color: white;
+            transition: all 0.3s ease;
+            z-index: 9998;
+        }
+
+        .chat-button:hover {
+            transform: scale(1.1);
+            box-shadow: 0 6px 25px rgba(102, 126, 234, 0.6);
+        }
+
+        .chat-button.active {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        }
+
+        /* チャットウィンドウ */
+        .chat-window {
+            position: fixed;
+            bottom: 100px;
+            right: 30px;
+            width: 380px;
+            height: 550px;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            display: none;
+            flex-direction: column;
+            z-index: 9999;
+            overflow: hidden;
+            animation: slideUp 0.3s ease-out;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .chat-window.active {
+            display: flex;
+        }
+
+        .chat-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .chat-header h3 {
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .chat-close {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 24px;
+            cursor: pointer;
+            padding: 0;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            transition: background 0.2s;
+        }
+
+        .chat-close:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .chat-messages {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            background: #f9fafb;
+        }
+
+        .chat-message {
+            margin-bottom: 15px;
+            display: flex;
+            animation: fadeIn 0.3s ease-in;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .chat-message.bot {
+            justify-content: flex-start;
+        }
+
+        .chat-message.user {
+            justify-content: flex-end;
+        }
+
+        .message-bubble {
+            max-width: 75%;
+            padding: 12px 16px;
+            border-radius: 18px;
+            line-height: 1.5;
+            font-size: 14px;
+        }
+
+        .chat-message.bot .message-bubble {
+            background: white;
+            border: 1px solid #e5e7eb;
+            color: var(--text-color);
+            border-bottom-left-radius: 4px;
+        }
+
+        .chat-message.user .message-bubble {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-bottom-right-radius: 4px;
+        }
+
+        .chat-input-area {
+            padding: 15px 20px;
+            background: white;
+            border-top: 1px solid #e5e7eb;
+            display: flex;
+            gap: 10px;
+        }
+
+        .chat-input {
+            flex: 1;
+            padding: 12px 15px;
+            border: 1px solid #e5e7eb;
+            border-radius: 25px;
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .chat-input:focus {
+            border-color: #667eea;
+        }
+
+        .chat-send-btn {
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            color: white;
+            font-size: 20px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+
+        .chat-send-btn:hover {
+            transform: scale(1.05);
+        }
+
+        .chat-send-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .typing-indicator {
+            display: none;
+            padding: 12px 16px;
+            background: white;
+            border: 1px solid #e5e7eb;
+            border-radius: 18px;
+            border-bottom-left-radius: 4px;
+            max-width: 75px;
+        }
+
+        .typing-indicator.active {
+            display: block;
+        }
+
+        .typing-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #9ca3af;
+            display: inline-block;
+            margin: 0 2px;
+            animation: typingDot 1.4s infinite;
+        }
+
+        .typing-dot:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+
+        .typing-dot:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+
+        @keyframes typingDot {
+            0%, 60%, 100% {
+                transform: translateY(0);
+            }
+            30% {
+                transform: translateY(-10px);
+            }
+        }
+
+        /* レスポンシブ対応 */
+        @media (max-width: 480px) {
+            .chat-window {
+                right: 10px;
+                left: 10px;
+                width: auto;
+                bottom: 90px;
+            }
+
+            .chat-button {
+                right: 20px;
+                bottom: 20px;
+            }
+        }
+
+        /* シミュレーター本体は非表示（別ファイルとして使用） */
+        .simulator-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .info-text {
+            text-align: center;
+            padding: 40px 20px;
+            color: #666;
+        }
+
+        .info-text h1 {
+            color: var(--primary-color);
+            margin-bottom: 20px;
+        }
+
+        .info-text p {
+            margin-bottom: 10px;
+            line-height: 1.6;
+        }
+
+        .simulator-link {
+            display: inline-block;
+            margin-top: 20px;
+            padding: 15px 30px;
+            background: var(--primary-color);
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+
+        .simulator-link:hover {
+            background: #b71c1c;
+            transform: translateY(-2px);
+        }
+    </style>
+</head>
+<body>
+    <div class="simulator-container">
+        <div class="info-text">
+            <h1>🚗 RESCUE-1 チャットボット</h1>
+            <p>サービス内容や料金について、お気軽にご質問ください。</p>
+            <p>右下のチャットアイコンをクリックして会話を始められます。</p>
+            <a href="simulator.html" class="simulator-link">料金シミュレーターを使う</a>
+        </div>
+    </div>
+
+    <!-- チャットボタン -->
+    <button class="chat-button" id="chatButton">
+        💬
+    </button>
+
+    <!-- チャットウィンドウ -->
+    <div class="chat-window" id="chatWindow">
+        <div class="chat-header">
+            <h3>💬 RESCUE-1 サポート</h3>
+            <button class="chat-close" id="chatClose">×</button>
+        </div>
+        <div class="chat-messages" id="chatMessages">
+            <div class="chat-message bot">
+                <div class="message-bubble">
+                    こんにちは！RESCUE-1です。🚗<br>
+                    サービス内容や料金について、お気軽にご質問ください。
+                </div>
+            </div>
+        </div>
+        <div class="chat-input-area">
+            <input 
+                type="text" 
+                class="chat-input" 
+                id="chatInput" 
+                placeholder="メッセージを入力..."
+                autocomplete="off"
+            >
+            <button class="chat-send-btn" id="chatSendBtn">
+                ➤
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // チャットボット JavaScript
+        const chatButton = document.getElementById('chatButton');
+        const chatWindow = document.getElementById('chatWindow');
+        const chatClose = document.getElementById('chatClose');
+        const chatMessages = document.getElementById('chatMessages');
+        const chatInput = document.getElementById('chatInput');
+        const chatSendBtn = document.getElementById('chatSendBtn');
+
+        // チャットウィンドウの開閉
+        chatButton.addEventListener('click', () => {
+            chatWindow.classList.toggle('active');
+            chatButton.classList.toggle('active');
+            if (chatWindow.classList.contains('active')) {
+                chatInput.focus();
+            }
+        });
+
+        chatClose.addEventListener('click', () => {
+            chatWindow.classList.remove('active');
+            chatButton.classList.remove('active');
+        });
+
+        // メッセージ送信
+        async function sendMessage() {
+            const message = chatInput.value.trim();
+            if (!message) return;
+
+            // ユーザーメッセージを表示
+            addMessage(message, 'user');
+            chatInput.value = '';
+            chatSendBtn.disabled = true;
+
+            // タイピングインジケーター表示
+            const typingIndicator = showTypingIndicator();
+
+            try {
+                // Claude APIにリクエスト送信
+                const response = await fetch('/api/chat', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        message: message
+                    })
+                });
+
+                const data = await response.json();
+                
+                // タイピングインジケーター削除
+                typingIndicator.remove();
+
+                // ボットの返答を表示
+                if (data.error) {
+                    addMessage('申し訳ございません。エラーが発生しました。お電話でお問い合わせください。📞 050-5527-6162', 'bot');
+                } else {
+                    addMessage(data.response, 'bot');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                typingIndicator.remove();
+                addMessage('通信エラーが発生しました。お電話でお問い合わせください。📞 050-5527-6162', 'bot');
+            }
+
+            chatSendBtn.disabled = false;
+        }
+
+        // メッセージ追加
+        function addMessage(text, sender) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `chat-message ${sender}`;
+            
+            const bubble = document.createElement('div');
+            bubble.className = 'message-bubble';
+            bubble.textContent = text;
+            
+            messageDiv.appendChild(bubble);
+            chatMessages.appendChild(messageDiv);
+            
+            // スクロールを最下部に
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        // タイピングインジケーター表示
+        function showTypingIndicator() {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'chat-message bot';
+            
+            const indicator = document.createElement('div');
+            indicator.className = 'typing-indicator active';
+            indicator.innerHTML = '<span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span>';
+            
+            messageDiv.appendChild(indicator);
+            chatMessages.appendChild(messageDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+            
+            return messageDiv;
+        }
+
+        // イベントリスナー
+        chatSendBtn.addEventListener('click', sendMessage);
+        chatInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+    </script>
+</body>
+</html>
